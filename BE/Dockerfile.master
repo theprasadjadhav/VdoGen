@@ -1,0 +1,18 @@
+FROM oven/bun:1
+
+WORKDIR /master
+
+COPY package*.json ./
+COPY bun.lock ./
+COPY prisma/schema.prisma ./prisma/schema.prisma
+
+
+RUN apt-get update -y && apt-get install -y openssl
+
+RUN bun install
+
+RUN bunx prisma generate
+
+COPY src ./src
+
+CMD ["bun","run", "src/master/index.ts"]
