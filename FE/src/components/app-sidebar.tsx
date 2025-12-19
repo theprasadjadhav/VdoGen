@@ -20,11 +20,13 @@ import type { HistoryType } from "@/types"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   history: HistoryType[],
+  setHistory: React.Dispatch<React.SetStateAction<HistoryType[]>>,
+  historyError: string | null
 }
 
-export function AppSidebar({ history, ...props }: AppSidebarProps) {
+export function AppSidebar({ history,setHistory, historyError, ...props }: AppSidebarProps) {
     return (
-        <Sidebar collapsible="icon" {...props}>
+        <Sidebar collapsible="icon"  {...props}>
             {/* Top header */}
             <SidebarHeader>
                 <SidebarMenu>
@@ -44,7 +46,7 @@ export function AppSidebar({ history, ...props }: AppSidebarProps) {
 
             {/* mid content */}
             <SidebarContent>
-                <NavMain history={history} />
+                <NavMain history={history} historyError={historyError} setHistory={setHistory}/>
             </SidebarContent>
 
             {/* footer */}

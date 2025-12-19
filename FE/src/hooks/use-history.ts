@@ -5,7 +5,7 @@ import type { HistoryType } from "@/types";
 
 export const useHistory = () => {
     const [history, setHistory] = useState<HistoryType[]>([])
-    const [historyError, setError] = useState<string | null>(null);
+    const [historyError, setHistoryError] = useState<string | null>(null);
     const [historyLoading, setLoading] = useState(true);
 
     const { getToken } = useAuth()
@@ -26,12 +26,17 @@ export const useHistory = () => {
                         Authorization: `Bearer ${token}`
                     }
                 })
+
+                if(res.status!=200){
+                    throw new Error("Internal server error: Failed to fetch content")
+                }
+
                 const history: HistoryType[] = res.data
                 setHistory(history)
-                setError(null)
+                setHistoryError(null)
             } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to fetch content';
-                setError(errorMessage);
+                const errorMessage = err instanceof Error ? err.message : 'Failed to fetch History';
+                setHistoryError(errorMessage);
                 setHistory([]);
             }finally{
                 setLoading(false)
@@ -42,5 +47,5 @@ export const useHistory = () => {
 
     }, [])
 
-    return {history, setHistory, historyLoading,setLoading, historyError,setError}
+    return {history, setHistory, historyLoading,setLoading, historyError,setHistoryError}
 }

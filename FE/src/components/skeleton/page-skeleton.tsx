@@ -5,7 +5,7 @@ export function PageSkeleton() {
     return (
         <div className="flex h-screen">
             {/* Sidebar */}
-            <div className="w-64 border-1 rounded-xl py-2 m-2 flex flex-col">
+            <div className="hidden md:flex w-64 border-1 rounded-xl py-2 m-2  flex-col">
                 <div className="flex h-14 items-center p-4">
                     <Skeleton className="h-10 flex-1" />
                 </div>

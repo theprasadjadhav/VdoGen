@@ -27,28 +27,32 @@ export const useContent = () => {
                         Authorization: `Bearer ${token}`
                     }
                 });
+
+                if(response.status!=200){
+                    throw new Error("Internal server error: Failed to fetch content")
+                }
+
                 const contentData:ContentType[] = response.data
                 
-                setContent(contentData);
-                setError(null);
+                setContent(contentData)
+                setError(null)
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to fetch content';
-                setError(errorMessage);
-                setContent([]);
+                setError(errorMessage)
+                setContent([])
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
         };
 
         if(!activeConversation || activeConversation=="new"){
-            setLoading(true)
-            setContent([]);
-            setLoading(false);
-            setError(null);
+            setContent([])
+            setError(null)
+
         }else{
-            fetchContent();
+            fetchContent()
         }
-    }, [activeConversation]);
+    }, [activeConversation])
 
     return { content, setContent, contentError, contentLoading };
 }

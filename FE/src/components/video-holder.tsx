@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { IconPlayerPlay } from "@tabler/icons-react";
-import { HLSVideoPlayer } from "./hsl-video-player";
+import { HLSVideoPlayer } from "./hls-video-player";
 
 
 export function VideoHolder({ id }: {id:string}) {
@@ -28,6 +28,8 @@ export function VideoHolder({ id }: {id:string}) {
                         id={id}
                         removeComponent={removeComponent}
                         className="w-full h-full"
+                        type="preview"
+                        draggable={false}
                     />
                 )}
             </AspectRatio>

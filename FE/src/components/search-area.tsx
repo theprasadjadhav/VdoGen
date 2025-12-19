@@ -12,107 +12,60 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { IconArrowUp, IconSettings } from "@tabler/icons-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { baseAxios } from "@/lib/axios"
-import { useAuth } from "@clerk/clerk-react"
-import { useActiveConversation } from "@/hooks/use-active-conversation"
 import { useState } from "react"
-import type { ContentType } from "@/types"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"
 
 const videoSpecsSchema = z.object({
-    resolution: z.enum(["1080p", "720p", "480p", "360p"]),
-    fps: z.enum(["24", "30", "60"]),
-    duration: z.enum(["5", "10", "15", "30", "60", "120"]),
-    aspectRatio: z.enum(["16:9", "9:16", "4:3"])
+    resolution: z.enum(["1080p", "720p", "480p", "360p", ""]),
+    fps: z.enum(["24", "30", "60", ""]),
+    duration: z.enum(["5", "10", "15", "30", "60", "120", ""]),
+    aspectRatio: z.enum(["16:9", "9:16", "4:3", ""])
 })
 
-const FormSchema = z.object({
+export const FormSchema = z.object({
     prompt: z.string(),
     specs: videoSpecsSchema
 })
 
 type SearchAreaType = {
     className: string,
-    addNewConversation: (content: ContentType) => void,
+    onSubmit: (data: z.infer<typeof FormSchema>) => Promise<void>,
     disabled: boolean,
 }
 
-export function SearchArea({ className, addNewConversation, disabled }: SearchAreaType) {
+export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
 
-    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const { activeConversation } = useActiveConversation()
-    const { getToken } = useAuth();
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
     })
 
-    async function onSubmit(data: z.infer<typeof FormSchema>) {
-        try {
-            setLoading(true);
-            const token = await getToken();
-            if (!token) {
-                throw new Error('No authentication token available, Please Login');
-            }
-
-            const genResponse = await baseAxios.post("/gen",
-                {
-                    prompt: data.prompt,
-                    specs: data.specs,
-                    conversationId: activeConversation
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
-
-            if (genResponse.status === 200 && genResponse.data.id) {
-                const newContent: ContentType = genResponse.data;
-                addNewConversation(newContent);
-                setError(null);
-            } else {
-                throw new Error('Failed to generate content');
-            }
-        } catch (err) {
-            let errorMessage = 'Failed to process request';
-
-            if (err instanceof Error) {
-                if (err.message.includes('ECONNREFUSED') || err.message.includes('Redis')) {
-                    errorMessage = 'Server is temporarily unavailable. Please try again in a few moments.';
-                } else if (err.message.includes('No authentication token')) {
-                    errorMessage = 'Please login to continue.';
-                } else {
-                    errorMessage = err.message;
-                }
-            }
-
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    }
-
     return (
         <div className={className}>
-            {error && (
-                <div className="text-red-500 mb-4 p-2">
-                    {error}
-                </div>
-            )}
-            {loading && (
-                <div className="text-blue-500 mb-4 p-2">
-                    Processing your request...
-                </div>
-            )}
-
             <Form {...form} >
-                <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 space-y-6">
+                <form
+                    onSubmit={
+                        form.handleSubmit(async (data) => {
+                            setLoading(true)
+                            await onSubmit(data);
+                            setLoading(false)
+                            form.reset({
+                                prompt: "",
+                                specs: {
+                                    resolution: "",
+                                    aspectRatio: "",
+                                    fps: "",
+                                    duration: ""
+                                }
+                            })
+                        }
+                        )}
+                    className="w-2/3 space-y-6"
+                >
 
                     {/* search area container */}
-                    <div className="flex flex-col gap-2 border-1 p-2 rounded-xl">
+                    <div className="flex flex-col gap-2 border-1 p-2 rounded-xl ">
 
                         {/* text area */}
                         <FormField
@@ -138,7 +91,7 @@ export function SearchArea({ className, addNewConversation, disabled }: SearchAr
                             <div className="lg:hidden">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="outline"><IconSettings/></Button>
+                                        <Button variant="outline"><IconSettings /></Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="start" className="lg:hidden">
                                         <DropdownMenuGroup>
@@ -148,7 +101,7 @@ export function SearchArea({ className, addNewConversation, disabled }: SearchAr
                                                     name="specs.resolution"
                                                     render={({ field }) => (
                                                         <FormItem  >
-                                                            <Select  onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
                                                                 <FormControl >
                                                                     <SelectTrigger >
                                                                         <SelectValue placeholder="Resolution" />
@@ -335,13 +288,24 @@ export function SearchArea({ className, addNewConversation, disabled }: SearchAr
                             </div>
 
                             {/* submit button */}
-                            <Button
-                                type="submit"
-                                className="ml-auto cursor-pointer"
-                                disabled={!form.watch("prompt") || disabled}
-                            >
-                                <IconArrowUp />
-                            </Button>
+                            {
+                                <Button
+                                    type="submit"
+                                    className="ml-auto cursor-pointer"
+                                    disabled={!form.watch("prompt") || loading || disabled}
+                                >
+
+                                    {loading ?
+                                        <span className="flex items-center gap-2">
+                                            <span className="inline-block w-4 h-4 border-2 border-t-transparent border-gray-400 rounded-full animate-spin"></span>
+                                        </span>
+                                        :
+                                        <IconArrowUp />
+                                    }
+
+                                </Button>
+
+                            }
                         </div>
 
                     </div>
