@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar } from "../../components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useHistory } from "@/hooks/use-history"
@@ -94,7 +94,7 @@ export default function Page() {
     }
 
     if (historyLoading) {
-        return <PageSkeleton />
+         return <PageSkeleton />
     }
 
     return (
