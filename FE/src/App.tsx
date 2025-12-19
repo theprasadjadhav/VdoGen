@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router"
 import { Project } from "./app/dashboard/project"
 import { Toaster } from "sonner"
 import { Pricing } from './app/dashboard/pricing'
-import Home from './app/dashboard/Home'
+import Home from './app/dashboard/home'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL

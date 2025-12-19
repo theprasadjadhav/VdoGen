@@ -5,7 +5,7 @@ import type { Clip, projectType } from '@/types';
 import { Button } from './ui/button';
 import { IconChevronLeft, IconCircleCheck, IconDownload, IconEditCircle, IconPlayerPause, IconPlayerPlay, IconReload } from '@tabler/icons-react';
 import Hls from 'hls.js';
-import TimelineEditor from './TimelineEditor';
+import TimelineEditor from './timeline-editor';
 import RightSidebar from './right-sidebar';
 import { Progress } from "./ui/progress";
 import { toast } from "sonner";
