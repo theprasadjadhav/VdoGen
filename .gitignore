@@ -1,2 +1,62 @@
-video_105
+# ── Folders ───────────────────────────────────
 ops
+videos
+
+# ── Dependencies ─────────────────────────────
+node_modules/
+
+# ── Environment & Secrets ────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.dev.vars*
+
+# ── BE specific ──────────────────────────────
+BE/vdogen-e3f9070cfa09.json
+BE/generated/
+BE/prompts/
+
+# ── FE specific ──────────────────────────────
+FE/.wrangler/
+FE/dist/
+FE/dist-ssr/
+
+
+# ── Build outputs ────────────────────────────
+build/
+dist/
+.next/
+out/
+
+# ── Logs ─────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ── TypeScript ───────────────────────────────
+*.tsbuildinfo
+
+# ── Caches ───────────────────────────────────
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# ── Testing ──────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ── OS ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editors ──────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.sw?
