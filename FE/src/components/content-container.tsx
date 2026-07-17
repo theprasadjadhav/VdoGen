@@ -1,6 +1,6 @@
-import type { ContentType } from "@/types";
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { FormSchema, SearchArea } from "./search-area";
+import type { ContentType } from "@/lib/types";
+import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { SearchArea } from "./search-area";
 import { useActiveConversation } from "@/hooks/use-active-conversation";
 import { ContentSkeleton } from "./skeleton/content-skeleton";
 import { videoStatusEnum } from "@/lib/enums";
@@ -9,8 +9,10 @@ import WelcomeMessage from "./welcome-message";
 import Content from "./content";
 import { toast } from "sonner";
 import { baseAxios } from "@/lib/axios";
-import { useAuth } from "@clerk/clerk-react";
 import type z from "zod";
+import { VideoGenFormSchema as FormSchema } from '../lib/schema';
+import { useAuth } from "@/hooks/use-Auth";
+import { PlanDialog } from "./plan-dialog";
 
 
 type ChatContentType = {
@@ -19,15 +21,17 @@ type ChatContentType = {
     setContent: Dispatch<SetStateAction<ContentType[]>>,
     contentError: string | null,
     contentLoading: boolean,
+    contentContainerRef: RefObject<HTMLDivElement | null>
 }
 
 export function ContentContainer({ ...props }: ChatContentType) {
-    const { addNewContentToConversation, content, setContent, contentError, contentLoading } = props
+    const { addNewContentToConversation, content, setContent, contentError, contentLoading, contentContainerRef } = props
 
-    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [isPlanOpen, setIsPlanOpen] = useState(false)
+    // const chatContainerRef = useRef<HTMLDivElement>(null);
     const { activeConversation } = useActiveConversation()
     const [searchAreaDisabled, setSearchAreaDisabled] = useState(false)
-    const { getToken } = useAuth()
+    const { user, setUser } = useAuth()
 
     const handleVideoAdded = (contentId: string, projectIds: string[]) => {
         setContent((content) => {
@@ -40,9 +44,20 @@ export function ContentContainer({ ...props }: ChatContentType) {
 
     async function generateVideo(data: z.infer<typeof FormSchema>) {
         try {
-            const token = await getToken();
-            if (!token) {
-                throw new Error('No authentication token available, Please Login');
+            if (!user) {
+                throw new Error('No authentication token available');
+            }
+
+            if (user.useCount >= 3) {
+                if (!user.primeExpiry) {
+                    setIsPlanOpen(true)
+                    toast.error("You have reached the limit for free users. Please upgrade to Prime to generate more videos.");
+                    return
+                } else if (user.primeExpiry && (new Date(user.primeExpiry).getTime() < Date.now())) {
+                    setIsPlanOpen(true)
+                    toast.error("Your Prime plan has expired. Please renew to continue generating videos.");
+                    return
+                }
             }
 
             const genResponse = await baseAxios.post("/video/gen",
@@ -50,30 +65,29 @@ export function ContentContainer({ ...props }: ChatContentType) {
                     prompt: data.prompt,
                     specs: data.specs,
                     conversationId: activeConversation
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
                 }
             );
 
-            if (genResponse.data.id) {
-                const newContent: ContentType = genResponse.data;
-                addNewContentToConversation(newContent);
-            } else if (!genResponse.data.success) {
-                toast.warning(genResponse.data.message)
-            } else {
-                new Error('Failed to generate content');
+            if (genResponse.status === 401) {
+                setUser(undefined);
+                throw new Error ("Authentication required. Please log in.")
             }
+            if (genResponse.status != 200 || !genResponse.data?.success) {
+                throw new Error(genResponse.data?.message ?? 'Failed to generate video');
+            }
+
+            const newContent: ContentType = genResponse.data?.video;
+            addNewContentToConversation(newContent);
+            if (JSON.stringify(user) !== JSON.stringify(genResponse.data.user)) {
+                setUser(genResponse.data.user)
+            }
+
         } catch (err) {
             let errorMessage = 'Failed to process request';
 
             if (err instanceof Error) {
                 if (err.message.includes('ECONNREFUSED') || err.message.includes('Redis')) {
                     errorMessage = 'Server is temporarily unavailable. Please try again in a few moments.';
-                } else if (err.message.includes('No authentication token')) {
-                    errorMessage = 'Please login to continue.';
                 } else {
                     errorMessage = err.message;
                 }
@@ -84,9 +98,9 @@ export function ContentContainer({ ...props }: ChatContentType) {
 
     useEffect(() => {
 
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
+        // if (chatContainerRef.current) {
+        //     chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        // }
 
         if (content?.at(-1)?.status === videoStatusEnum.PROCESSING || content?.at(-1)?.status === videoStatusEnum.INITIATED) {
             setSearchAreaDisabled(true)
@@ -103,7 +117,7 @@ export function ContentContainer({ ...props }: ChatContentType) {
     return <>
         <div className="flex flex-1 flex-col items-center p-2 h-[calc(100vh-4rem)]">
 
-            <div ref={chatContainerRef} className="w-full overflow-y-auto flex-1">
+            <div ref={contentContainerRef} className="w-full overflow-y-auto flex-1">
 
                 {
                     contentLoading ? <ContentSkeleton />
@@ -124,6 +138,9 @@ export function ContentContainer({ ...props }: ChatContentType) {
                 onSubmit={generateVideo}
                 disabled={searchAreaDisabled}
             />
+
+            {/* plan dialog */}
+            <PlanDialog open={isPlanOpen} setOpen={() => setIsPlanOpen(false)} />
         </div >
     </>
 }

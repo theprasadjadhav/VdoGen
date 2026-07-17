@@ -13,7 +13,7 @@ RUN bun install
 
 RUN bunx prisma generate
 
-COPY src/ ./src
+COPY src ./src
 
-CMD ["bun","run", "src/status-check-worker/status-check-worker.ts"]
+CMD ["bun","run", "src/workers/status-check-worker.ts"]
 

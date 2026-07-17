@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
-import { useAuth } from '@clerk/clerk-react';
+// import { useAuth } from '@clerk/clerk-react';
 import { baseAxios } from '@/lib/axios';
-import type { Clip, projectType } from '@/types';
+import type { ClipType, ProjectType } from '@/lib/types';
 import { Button } from './ui/button';
 import { IconChevronLeft, IconCircleCheck, IconDownload, IconEditCircle, IconPlayerPause, IconPlayerPlay, IconReload } from '@tabler/icons-react';
 import Hls from 'hls.js';
@@ -13,6 +13,7 @@ import { ConfirmationDialog } from "./ui/confirmation-dialog";
 import EditorSkeleton from "./skeleton/editor-skeleton";
 import ErrorAlert from "./error-alert";
 import { Spinner } from "./ui/spinner";
+import { useAuth } from "@/hooks/use-Auth";
 
 type EditorPropsType = {
     selectedProject: string,
@@ -21,7 +22,7 @@ type EditorPropsType = {
 
 export default function Editor({ selectedProject, setSelectedProject }: EditorPropsType) {
 
-    const { getToken } = useAuth()
+    const { user, setUser } = useAuth()
 
     const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
     const hlsPlayerRefs = useRef<Record<string, Hls | null>>({})
@@ -35,32 +36,32 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
     const [timelinecurrentTime, setTimelineCurrentTime] = useState(0)
     const [isPlaying, setIsPlaying] = useState(false);
     const isPlayingRef = useRef(isPlaying)
-    const [currentClip, setCurrentClip] = useState<Clip | null>()
-    const [clips, setClips] = useState<Required<Clip>[]>([])
+    const [currentClip, setCurrentClip] = useState<ClipType | null>()
+    const [clips, setClips] = useState<Required<ClipType>[]>([])
     const [renderProgess, setRenderProgess] = useState<null | string>(null)
-    const [project, setProject] = useState<Required<projectType> | null>(null)
+    const [project, setProject] = useState<Required<ProjectType> | null>(null)
     const [playDisabled, setPlayDisabled] = useState(false)
+    const [videoLoading, setVideoLoading] = useState(false)
+
 
 
     async function startRender() {
         try {
-            const token = await getToken()
 
-            if (!token) {
-                toast.error("No authentication token available")
-                return
+            if (!user) {
+                throw new Error('No authentication token available');
             }
 
-            const res = await baseAxios.post(`/project/render?projectId=${selectedProject}`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            })
+            const res = await baseAxios.post(`/project/render?projectId=${selectedProject}`)
 
+            if (res.status === 401) {
+                setUser(undefined);
+                throw new Error("Authentication required. Please log in.")
+            }
             if (res.status == 200 || res.status == 409) {
 
                 if (res.status == 409) {
-                    toast.info("render already inprogess")
+                    toast.info("render already in progess")
                 }
 
                 const jobId = res.data.jobId
@@ -68,13 +69,15 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
                 setRenderProgess(status)
 
                 while (status != "complete" && status != "error") {
-                    const token = await getToken()
-                    const res = await baseAxios.get(`/project/render/status?jobId=${jobId}`, {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    })
+                    if (!user) {
+                        throw new Error('No authentication token available');
+                    }
+                    const res = await baseAxios.get(`/project/render/status?jobId=${jobId}`)
 
+                    if (res.status === 401) {
+                        setUser(undefined);
+                        throw new Error("Authentication required. Please log in.")
+                    }
                     if (res.status == 200) {
                         const resStatus = res.data.status
 
@@ -105,6 +108,8 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
                     }
                 }
                 setRenderProgess(null)
+            } else {
+                throw new Error(res.data?.message)
             }
         } catch (e) {
             const message = e instanceof Error ? e.message : "An error occurred while rendering the video. Please try again."
@@ -114,14 +119,18 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
 
     async function getManifestFileAndCreateBlob(videoId: string): Promise<[string, null] | [null, string]> {
 
-        const token = await getToken()
 
-        if (!token) {
-            return [null, "No authentication token available"]
+        if (!user) {
+            throw new Error('No authentication token available');
         }
 
         try {
-            const response = await baseAxios.get(`/video/${videoId}/manifest?token=${token}&type=edit`)
+            const response = await baseAxios.get(`/video/${videoId}/manifest?type=edit`)
+
+            if (response.status === 401) {
+                setUser(undefined);
+                throw new Error("Authentication required. Please log in.")
+            }
             if (response.status != 200) {
                 return [null, "Unable to load video: Internal server error"]
             }
@@ -135,55 +144,29 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
         }
     }
 
-    // async function getClipsWithUrl(clips: Required<Clip>[]): Promise<Required<Clip>[]> {
-
-    //     const token = await getToken()
-
-    //     if (!token) {
-    //         toast.info("No authentication token available. Please login to continue.");            
-    //         return [];
-    //     }
-    //     const modifiedClips = await Promise.all(
-    //         clips.map(async clip => {
-    //             const [url, error] = await getManifestFileAndCreateBlob(clip.videoId,token);
-    //             if (url) {
-    //                 return { ...clip, url };
-    //             } else {
-    //                 toast.info(`Clip ${clip.label} is removed from timeline due to: ${error}`)
-    //                 setSaved(false)
-    //                 return null;
-    //             }
-    //         })
-    //     );
-    //     const filteredClips = modifiedClips.filter(clip => clip != null);
-    //     return filteredClips;
-    // }
-
     async function saveProjectData() {
         setSaving(true)
-        const token = await getToken()
 
         try {
-            if (!token) {
+            if (!user) {
                 setSaving(false)
                 toast.error("No authentication token available")
                 return
             }
+
             const response = baseAxios.patch("/project",
                 {
                     projectId: selectedProject,
                     data: clips
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
                 }
             )
 
             toast.promise(response.then(res => {
                 if (res.status === 200) {
                     return res;
+                } else if (res.status === 401) {
+                    setUser(undefined);
+                    throw new Error("Authentication required. Please log in.")
                 } else {
                     throw new Error();
                 }
@@ -216,34 +199,32 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
 
     useEffect(() => {
         async function getProjectData() {
-            setLoading(true)
             try {
-                const token = await getToken()
+                setLoading(true)
 
-                if (!token) {
-                    throw new Error("No authentication token available")
+                if (!user) {
+                    throw new Error('No authentication token available');
                 }
 
-                const response = await baseAxios.get(`/project/${selectedProject}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
+                const response = await baseAxios.get(`/project/${selectedProject}`)
 
-                if (response.status != 200) {
-                    throw new Error("Internal server error: Failed to fetch Project")
+                if (response.status === 401) {
+                    setUser(undefined);
+                    throw new Error("Authentication required. Please log in.")
+                }
+                if (response.status != 200 || !response.data?.success) {
+                    throw new Error(response.data?.message ?? "Internal server error: Failed to fetch Project")
                 }
 
-                const project: Required<projectType> = response.data
+                const project: Required<ProjectType> = response.data.project
 
                 setProject(project)
 
-                const clips: Required<Clip>[] = JSON.parse(project.data)
+                const clips: Required<ClipType>[] = JSON.parse(project.data)
 
                 if (!clips) {
                     throw new Error("failed to featch project data")
                 }
-                //const modifiedClips = await getClipsWithUrl(clips)
 
                 setClips(clips)
                 setVideoIds(Array.from(new Set(clips.map(c => c.videoId))))
@@ -274,7 +255,11 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
 
         async function initPlayersWhenRefsReady() {
             setPlayDisabled(true)
-            if (!videoIds || videoIds.length === 0) return
+            setVideoLoading(true)
+            if (!videoIds || videoIds.length === 0) {
+                setVideoLoading(false)
+                return
+            }
 
             const maxAttempts = 50
             let attempts = 0
@@ -317,6 +302,11 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
 
             await Promise.all(
                 Object.entries(hlsPlayerRefs.current).map(([, hlsRef]) => {
+
+                    if (hlsRef?.media && hlsRef.media.readyState >= 2) {
+                        return Promise.resolve();
+                    }
+
                     return new Promise<void>((resolve) => {
                         const manifestLoadedhandler = () => {
                             hlsRef?.off(Hls.Events.FRAG_BUFFERED, manifestLoadedhandler)
@@ -324,9 +314,9 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
                         }
                         hlsRef?.on(Hls.Events.FRAG_BUFFERED, manifestLoadedhandler)
                     })
-
                 })
             ).then(() => {
+                setVideoLoading(false)
                 setPlayDisabled(false)
             })
         }
@@ -445,95 +435,95 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
     return (
         <div className="flex flex-col sm:flex-row flex-1 h-full w-full py-2  bg-gradient-to-br from-background to-muted/60">
 
-            {/* main editor */}
-            <div className='flex flex-1 flex-col justify-center p-8 w-full'>
 
-                {/* back, save, download */}
-                <div className='flex justify-between'>
-                    {/* back button */}
-                    {saved ?
-                        <Button
-                            className='flex items-center gap-2 text-muted-foreground hover:text-primary'
-                            variant={"ghost"}
-                            onClick={() => {
-                                setSelectedProject("")
-                            }}
-                        >
-                            <IconChevronLeft />
-                            <span className="hidden sm:block text-base font-medium">Back To Projects</span>
-                        </Button>
-                        :
-                        <ConfirmationDialog
-                            trigger={
+            {/* spinner overlay and main editor with blur/disable when loading */}
+            <div className="relative flex flex-1 w-full">
+                {/* Main Editor Content */}
+                <div
+                    className={`flex flex-1 flex-col justify-center p-8 w-full transition-all duration-200 gap-3 ${
+                        videoLoading ? 'pointer-events-none brightness-90 select-none' : ''
+                    }`}
+                    aria-disabled={videoLoading ? "true" : undefined}
+                >
+                    {/* back, save, download */}
+                    <div className='flex justify-between'>
+                        {/* back button */}
+                        {saved ? (
+                            <Button
+                                className='flex items-center gap-2 text-muted-foreground hover:text-primary'
+                                variant={"ghost"}
+                                onClick={() => {
+                                    setSelectedProject("")
+                                }}
+                            >
+                                <IconChevronLeft />
+                                <span className="hidden sm:block text-base font-medium">Back To Projects</span>
+                            </Button>
+                        ) : (
+                            <ConfirmationDialog
+                                trigger={
+                                    <Button
+                                        className='flex items-center gap-2 text-muted-foreground hover:text-primary'
+                                        variant={"ghost"}
+                                    >
+                                        <IconChevronLeft />
+                                        <span className="text-base font-medium">Back To Projects</span>
+                                    </Button>
+                                }
+                                title="Back to Projects"
+                                description="You have unsaved changes. If you go back now, any changes you made will be lost. Do you want to continue?"
+                                onConfirm={() => setSelectedProject("")}
+                            />
+                        )}
+
+                        {/* save & download button */}
+                        <div className='flex gap-2 justify-center items-center'>
+
+                            {/* download button and render progress */}
+                            <div className="relative">
                                 <Button
-                                    className='flex items-center gap-2 text-muted-foreground hover:text-primary'
-                                    variant={"ghost"}
+                                    variant={"outline"}
+                                    size={"icon"}
+                                    onClick={() => {
+                                        if (!saved) {
+                                            toast.warning("Please save your project before downloading.");
+                                            return;
+                                        }
+                                        setRenderProgess("0")
+                                        startRender()
+                                    }}
+                                    disabled={!!renderProgess || clips.length === 0}
                                 >
-                                    <IconChevronLeft />
-                                    <span className="text-base font-medium">Back To Projects</span>
+                                    <IconDownload />
                                 </Button>
-                            }
-                            title="Back to Projects"
-                            description="You have unsaved changes. If you go back now, any changes you made will be lost. Do you want to continue?"
-                            onConfirm={() => setSelectedProject("")}
+                                {renderProgess &&
+                                    <div className="absolute left-1/2 -translate-x-1/2 mt-2 z-10 bg-popover border border-border rounded-lg shadow-lg px-4 py-3 flex flex-col items-center w-48">
+                                        <Progress value={Number(renderProgess)} className="my-2" />
+                                        <p className="text-sm font-medium">{Math.floor(Number(renderProgess))}%</p>
+                                        <span className="text-xs text-muted-foreground mt-1">Rendering...</span>
+                                    </div>
+                                }
+                            </div>
 
-                        />
-                    }
-
-                    {/* save & download button */}
-                    <div className='flex gap-2 justify-center items-center'>
-
-                        {/* download button and render progress */}
-                        <div className="relative">
-
+                            {/* save button */}
                             <Button
                                 variant={"outline"}
-                                size={"icon"}
+                                disabled={saving}
                                 onClick={() => {
-                                    if (!saved) {
-                                        toast.warning("Please save your project before downloading.");
-                                        return;
-                                    }
-                                    setRenderProgess("0")
-                                    startRender()
+                                    saveProjectData()
                                 }}
-                                disabled={!!renderProgess || clips.length == 0}
                             >
-                                <IconDownload />
+                                Save{saved ? <IconCircleCheck color='green' /> : <IconEditCircle />}
                             </Button>
-                            {renderProgess &&
-                                <div className="absolute left-1/2 -translate-x-1/2 mt-2 z-10 bg-popover border border-border rounded-lg shadow-lg px-4 py-3 flex flex-col items-center w-48">
-                                    <Progress value={Number(renderProgess)} className="my-2"></Progress>
-                                    <p className="text-sm font-medium">{Math.floor(Number(renderProgess))}%</p>
-                                    <span className="text-xs text-muted-foreground mt-1">Rendering...</span>
-                                </div>
-                            }
                         </div>
-
-                        {/* save button */}
-                        <Button
-                            variant={"outline"}
-                            disabled={saving}
-                            onClick={() => {
-                                saveProjectData()
-                            }}
-                        >
-                            Save{saved ? <IconCircleCheck color='green' /> : <IconEditCircle />}
-                        </Button>
-
-
                     </div>
-                </div>
 
-                {/* video player, play/pause and restart button */}
-                <div className='flex flex-col gap-2 justify-center items-center h-[75%]'>
+                    {/* video player, play/pause and restart button */}
+                    <div className='flex flex-col gap-2 justify-center items-center h-[75%]'>
 
-                    {/* video player holder */}
-                    <div className="w-full md:w-3/5 h-auto aspect-video bg-black">
-                        {
-                            videoIds?.map(videoId => (
-
-
+                        {/* video player holder */}
+                        <div className="w-full md:w-3/5 h-auto aspect-video bg-black">
+                            {videoIds?.map(videoId => (
                                 <video
                                     key={videoId}
                                     ref={(el) => {
@@ -545,63 +535,70 @@ export default function Editor({ selectedProject, setSelectedProject }: EditorPr
                                         width: "100%",
                                     }}
                                 />
-                            ))
-                        }
+                            ))}
+                        </div>
 
-                        {/* spinner */}
-                        {playDisabled &&
-                            <div className="w-full h-full">
-                                <div className="flex justify-center items-center h-full">
-                                    <Spinner />
-                                </div>
-                            </div>
-                        }
+                        {/* play/pause and restart button */}
+                        <div>
+                            {/* play/pause button */}
+                            <Button
+                                onClick={() => {
+                                    setIsPlaying(pre => !pre);
+                                }}
+                                size={"icon"}
+                                variant={"ghost"}
+                                disabled={
+                                    playDisabled ||
+                                    clips.length === 0 ||
+                                    timelinecurrentTime >= (clips.length > 0 ? clips[clips.length - 1].timelineEndTime : 0)
+                                }
+                            >
+                                {isPlaying ? <IconPlayerPause /> : <IconPlayerPlay />}
+                            </Button>
+
+                            {/* restart button */}
+                            <Button
+                                onClick={() => {
+                                    setTimelineCurrentTime(0)
+                                    setCurrentClip(null)
+                                }}
+                                size={"icon"}
+                                variant={"ghost"}
+                                disabled={clips.length === 0 || isPlaying}
+                            >
+                                <IconReload />
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* play/pause and restart button */}
-                    <div>
-                        {/* play/pause button */}
-                        <Button
-                            onClick={() => {
-                                setIsPlaying(pre => {
-                                    return !pre;
-                                });
-                            }}
-                            size={"icon"}
-                            variant={"ghost"}
-                            disabled={playDisabled || clips.length == 0 || timelinecurrentTime >= clips[clips.length - 1].timelineEndTime}
-                        // disabled={playDisabled}
-                        >
-                            {isPlaying ? <IconPlayerPause /> : <IconPlayerPlay />}
-                        </Button>
-
-                        {/* restart button */}
-                        <Button
-                            onClick={() => {
-                                setTimelineCurrentTime(0)
-                                setCurrentClip(null)
-                            }}
-                            size={"icon"}
-                            variant={"ghost"}
-                            disabled={clips.length == 0 || isPlaying}
-                        >
-                            {<IconReload />}
-                        </Button>
-                    </div>
+                    {/* timeline component */}
+                    <TimelineEditor
+                        isPlaying={isPlaying}
+                        handlePlayheadDrag={handlePlayheadDrag}
+                        timelinecurrentTime={timelinecurrentTime}
+                        clips={clips}
+                        setVideoIds={setVideoIds}
+                        setClips={setClips}
+                        setSaved={setSaved}
+                        setCurrentClip={setCurrentClip}
+                    />
                 </div>
-
-
-                {/* timeline component */}
-                <TimelineEditor
-                    isPlaying={isPlaying}
-                    handlePlayheadDrag={handlePlayheadDrag}
-                    timelinecurrentTime={timelinecurrentTime}
-                    clips={clips}
-                    setClips={setClips}
-                    getManifestFileAndCreateBlob={getManifestFileAndCreateBlob}
-                    setSaved={setSaved}
-                    setCurrentClip={setCurrentClip}
-                />
+                {/* Spinner Overlay when loading */}
+                {videoLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/70 z-20">
+                        <div className="flex flex-col items-center gap-2">
+                            <Spinner />
+                            <span className="text-muted-foreground text-sm mt-2">
+                                Loading Editor
+                                <span className="inline-flex ml-2">
+                                    <span className="animate-bounce [animation-delay:0s]">.</span>
+                                    <span className="animate-bounce [animation-delay:0.2s]">.</span>
+                                    <span className="animate-bounce [animation-delay:0.4s]">.</span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* sidebar */}

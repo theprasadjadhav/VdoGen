@@ -8,3 +8,25 @@ export const videoSpecsSchema = z.object({
 })
 
 
+
+export const ProjectVideoDataArraySchema = z.array(z.object({
+    id:z.string(),
+    videoId: z.string(),
+    url: z.string(),
+    label: z.string(),
+    startTime: z.number(),
+    endTime: z.number(),
+    timelineStartTime: z.number(),
+    timelineEndTime: z.number()
+}))
+
+export const ProjectVideoDataSchema = z.object({
+    id:z.string(),
+    videoId: z.string(),
+    url: z.string(),
+    label: z.string(),
+    startTime: z.number(),
+    endTime: z.number(),
+    timelineStartTime: z.number(),
+    timelineEndTime: z.number()
+})

@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, memo } from "react"
 import ReactHlsPlayer from "react-hls-player"
-import { useAuth } from "@clerk/clerk-react"
-import type { Clip } from "@/types"
+import type { ClipType } from "@/lib/types"
 import { v4 as uuid } from "uuid"
 import ErrorAlert from "./error-alert"
-import { toast } from "sonner"
+import { useAuth } from "@/hooks/use-Auth"
 
 type HLSVideoPlayerProps = {
     id: string
@@ -14,40 +13,38 @@ type HLSVideoPlayerProps = {
     draggable: boolean
 }
 
-export function HLSVideoPlayer({ id, removeComponent, className, type, draggable }: HLSVideoPlayerProps) {
+function HLSVideoPlayerInner({ id, removeComponent, className, type, draggable }: HLSVideoPlayerProps) {
     const playerRef = useRef<HTMLVideoElement>(null)
-    const { getToken } = useAuth()
+    const { user } = useAuth()
 
     const [manifestUrl, setManifestUrl] = useState<string | null>(null)
     const [loading, setLoading] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
+        let cancelled = false
         async function getManifestUrl() {
             try {
                 setLoading(true);
 
-                const token = await getToken({ template: "manifest-file-Template" });
-
-                if (!token) {
-                    toast.error("No authentication token available. Please login to continue.");
+                if (!user) {
+                    throw new Error('No authentication token available');
                 }
-
                 const backendUrl = import.meta.env.VITE_BACKEND_URL;
+                const url = `${backendUrl}/video/${id}/manifest?type=${type}`;
 
-                const url = `${backendUrl}/video/${id}/manifest?token=${token}&type=${type}`;
-
-                setManifestUrl(url);
+                if (!cancelled) setManifestUrl(url);
             } catch (err) {
-                setError(err instanceof Error && err.message ? ` ${err.message}` : "");
+                if (!cancelled) setError(err instanceof Error && err.message ? ` ${err.message}` : "");
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         }
 
         getManifestUrl();
 
         return () => {
+            cancelled = true
             if (playerRef.current) {
                 playerRef.current.pause();
                 playerRef.current.onended = null;
@@ -57,12 +54,15 @@ export function HLSVideoPlayer({ id, removeComponent, className, type, draggable
                 playerRef.current = null;
             }
         };
-    }, []);
+    
+    }, [id, type]);
 
 
     function handleMouseEnter() {
-        if (playerRef.current) {
-            playerRef.current.play()
+        const video = playerRef.current
+        if (video && video.readyState >= 2) {
+            video.play().catch(() => {
+            })
         }
     }
 
@@ -75,7 +75,7 @@ export function HLSVideoPlayer({ id, removeComponent, className, type, draggable
 
     function handleDrag(e: React.DragEvent<HTMLVideoElement>) {
         if (playerRef.current) {
-            const data: Required<Clip> = {
+            const data: Required<ClipType> = {
                 id: uuid(),
                 videoId: id,
                 startTime: 0,
@@ -104,21 +104,34 @@ export function HLSVideoPlayer({ id, removeComponent, className, type, draggable
 
     return (
         <>
-            { manifestUrl && <ReactHlsPlayer
-                draggable={draggable}
-                onDragStart={(e) => draggable && handleDrag(e)}
-                onMouseEnter={() => type == "edit" ? handleMouseEnter() : undefined}
-                onMouseLeave={() => type == "edit" ? handleMouseLeave() : undefined}
-                key={`player-${id}`}
-                playerRef={playerRef as React.RefObject<HTMLVideoElement>}
-                src={manifestUrl}
-                controls={type == "preview" ? true : false}
-                autoPlay={type == "preview" ? true : false}
-                muted
-                onEnded={() => setTimeout(() => removeComponent?.(), 2000)}
-                onError={()=> removeComponent?.()}
-                className={className}/>
-            }
+            {manifestUrl && (
+                <ReactHlsPlayer
+                    draggable={draggable}
+                    onDragStart={e => draggable && handleDrag(e)}
+                    onMouseEnter={() => type === "edit" ? handleMouseEnter() : undefined}
+                    onMouseLeave={() => type === "edit" ? handleMouseLeave() : undefined}
+                    key={`player-${id}`}
+                    playerRef={playerRef as React.RefObject<HTMLVideoElement>}
+                    hlsConfig={{
+                        xhrSetup: function (xhr: XMLHttpRequest, url: string) {
+                            const URL = import.meta.env.VITE_BACKEND_URL;
+                            if (URL && url.includes(URL)) {
+                              xhr.withCredentials = true;
+                            }
+                          }
+                    }}
+                    src={manifestUrl}
+                    controls={type === "preview"}
+                    autoPlay={type === "preview"}
+                    muted
+                    onEnded={() => setTimeout(() => removeComponent?.(), 2000)}
+                    onError={() => removeComponent?.()}
+                    className={className}
+                />
+            )}
+            
         </>
     )
 }
+
+export const HLSVideoPlayer = memo(HLSVideoPlayerInner)

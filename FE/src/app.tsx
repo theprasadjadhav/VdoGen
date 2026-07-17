@@ -1,67 +1,52 @@
-import { ClerkProvider, SignedIn, SignedOut, SignIn, SignUp } from '@clerk/clerk-react'
-import Page from "./app/dashboard/page"
-import { ThemeProvider, useTheme } from './components/theme-provider'
-import { dark } from '@clerk/themes'
+import { ThemeProvider } from './hooks/use-theme'
 import { ActiveConversationProvider } from './hooks/use-active-conversation'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import { Project } from "./app/dashboard/project"
+import { Project } from "./app/dashboard/project-page"
 import { Toaster } from "sonner"
-import { Pricing } from './app/dashboard/pricing'
-import Home from './app/dashboard/home'
+import Home from './app/dashboard/home-page'
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AuthProvider, useAuth } from './hooks/use-Auth';
+import Chat from './app/dashboard/chat-page'
+import Auth from './app/dashboard/auth-page'
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error('Add your Clerk Publishable Key to the .env file')
-}
+function AppContentNew() {
 
-if (!FRONTEND_URL) {
-  throw new Error('Add your VITE_FRONTEND_URL to the .env file')
-}
+  const { user, loading } = useAuth()
 
-function AppContent() {
-  const { theme } = useTheme()
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center w-full h-screen">
+        <span className="shadcn-spinner h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></span>
+      </div>
+    )
+  }
 
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: theme === "dark" ? dark : undefined,
-      }}
-      publishableKey={PUBLISHABLE_KEY}
-      allowedRedirectOrigins={[FRONTEND_URL]}
-      signInUrl={`${FRONTEND_URL}/sign-in`}
-      signUpUrl={`${FRONTEND_URL}/sign-up`}
-      signInFallbackRedirectUrl={`${FRONTEND_URL}/chat`}
-      signUpFallbackRedirectUrl={`${FRONTEND_URL}/chat`}
-      afterSignOutUrl={FRONTEND_URL}
-    >
-      <SignedOut>
-        <BrowserRouter>
+    <>
+      <BrowserRouter>
+        {user ?
+          <ActiveConversationProvider>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path='/editor' element={<Project />} />
+              <Route path="*" element={<Navigate replace to="/" />} />
+            </Routes>
+          </ActiveConversationProvider>
+          :
           <Routes>
-            <Route path="/" element={<Home/>} />
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/sign-up" element={<SignUp />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/log-in" element={<Auth mode='login' />} />
+            <Route path="/sign-up" element={<Auth mode='signup' />} />
             <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>
-        </BrowserRouter>
-      </SignedOut>
-      <SignedIn>
-        <ActiveConversationProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/chat" element={<Page />} />
-                <Route path='/editor' element={<Project/>}/>
-                <Route path='/pricing' element={<Pricing/>}/>
-                <Route path="/sign-in" element={<Navigate replace to="/chat" />} />
-                <Route path="/sign-up" element={<Navigate replace to="/chat" />} />
-                <Route path="*" element={<Navigate replace to="/" />} />
-              </Routes>
-            </BrowserRouter>
-        </ActiveConversationProvider>
-      </SignedIn>
-    </ClerkProvider>
+        }
+      </BrowserRouter>
+
+
+    </>
   )
 }
 
@@ -69,7 +54,11 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster richColors position="top-center" />
-      <AppContent />
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <AuthProvider>
+          <AppContentNew />
+        </AuthProvider>
+      </GoogleOAuthProvider>
     </ThemeProvider>
   )
 }

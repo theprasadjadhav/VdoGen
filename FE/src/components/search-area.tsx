@@ -14,23 +14,22 @@ import { IconArrowUp, IconSettings } from "@tabler/icons-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"
-
-const videoSpecsSchema = z.object({
-    resolution: z.enum(["1080p", "720p", "480p", "360p", ""]),
-    fps: z.enum(["24", "30", "60", ""]),
-    duration: z.enum(["5", "10", "15", "30", "60", "120", ""]),
-    aspectRatio: z.enum(["16:9", "9:16", "4:3", ""])
-})
-
-export const FormSchema = z.object({
-    prompt: z.string(),
-    specs: videoSpecsSchema
-})
+import { VideoGenFormSchema as FormSchema } from "@/lib/schema"
 
 type SearchAreaType = {
     className: string,
     onSubmit: (data: z.infer<typeof FormSchema>) => Promise<void>,
     disabled: boolean,
+}
+
+const defaultValues: z.infer<typeof FormSchema> = {
+    prompt: "",
+    specs: {
+        resolution: "480p",
+        fps: "24",
+        duration: "10",
+        aspectRatio: "16:9",
+    },
 }
 
 export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
@@ -39,6 +38,7 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
+        defaultValues,
     })
 
     return (
@@ -51,17 +51,12 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                             await onSubmit(data);
                             setLoading(false)
                             form.reset({
+                                ...form.getValues(),
                                 prompt: "",
-                                specs: {
-                                    resolution: "",
-                                    aspectRatio: "",
-                                    fps: "",
-                                    duration: ""
-                                }
                             })
                         }
                         )}
-                    className="w-2/3 space-y-6"
+                    className="w-3/4 md:w-2/3 space-y-6"
                 >
 
                     {/* search area container */}
@@ -101,7 +96,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                                     name="specs.resolution"
                                                     render={({ field }) => (
                                                         <FormItem  >
-                                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                                            <Select
+                                                                onValueChange={field.onChange}
+                                                                value={field.value ?? "480p"}
+                                                                defaultValue="480p"
+                                                                disabled={disabled}>
                                                                 <FormControl >
                                                                     <SelectTrigger >
                                                                         <SelectValue placeholder="Resolution" />
@@ -110,7 +109,7 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                                                 <SelectContent>
                                                                     <SelectItem value="1080p">1080p</SelectItem>
                                                                     <SelectItem value="720p">720p</SelectItem>
-                                                                    <SelectItem value="480p">480p</SelectItem>
+                                                                    <SelectItem  value="480p">480p</SelectItem>
                                                                     <SelectItem value="360p">360p</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
@@ -124,7 +123,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                                     name="specs.fps"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                                            <Select
+                                                                onValueChange={field.onChange}
+                                                                value={field.value ?? "24"}
+                                                                defaultValue="24"
+                                                                disabled={disabled}>
                                                                 <FormControl>
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="FPS" />
@@ -146,7 +149,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                                     name="specs.duration"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                                            <Select
+                                                                onValueChange={field.onChange}
+                                                                value={field.value ?? "10"}
+                                                                defaultValue="10"
+                                                                disabled={disabled}>
                                                                 <FormControl>
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="Duration" />
@@ -171,7 +178,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                                     name="specs.aspectRatio"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                                            <Select
+                                                                onValueChange={field.onChange}
+                                                                value={field.value ?? "16:9"}
+                                                                defaultValue="16:9"
+                                                                disabled={disabled}>
                                                                 <FormControl>
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="Aspect Ratio" />
@@ -199,7 +210,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                     name="specs.resolution"
                                     render={({ field }) => (
                                         <FormItem >
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value ?? "480p"}
+                                                defaultValue="480p"
+                                                disabled={disabled}>
                                                 <FormControl>
                                                     <SelectTrigger >
                                                         <SelectValue placeholder="Resolution" />
@@ -222,7 +237,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                     name="specs.fps"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value ?? "24"}
+                                                defaultValue="24"
+                                                disabled={disabled}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="FPS" />
@@ -244,7 +263,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                     name="specs.duration"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value ?? "10"}
+                                                defaultValue="10"
+                                                disabled={disabled}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Duration" />
@@ -269,7 +292,11 @@ export function SearchArea({ className, onSubmit, disabled }: SearchAreaType) {
                                     name="specs.aspectRatio"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={disabled}>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                value={field.value ?? "16:9"}
+                                                defaultValue="16:9"
+                                                disabled={disabled}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Aspect Ratio" />

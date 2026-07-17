@@ -4,13 +4,15 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { UserButton, useUser } from "@clerk/clerk-react"
+import { useAuth } from "@/hooks/use-Auth";
+// import { UserButton, useUser } from "@clerk/clerk-react"
 
 import { IconCoin } from "@tabler/icons-react"
 import { Link } from 'react-router';
 
 export function NavUser() {
-  const { user } = useUser()
+  // const { user } = useUser()
+  const { user } = useAuth()
   const { state } = useSidebar()
 
   return (
@@ -33,11 +35,11 @@ export function NavUser() {
         </Link>
       </SidebarMenuItem>
       <SidebarMenuItem className="flex items-center justify-between gap-3">
-        <UserButton />
+        {/* <UserButton /> */}
         <div className="grid flex-1 text-left text-sm leading-tight">
-          <span className="truncate font-medium">{user?.fullName}</span>
+          <span className="truncate font-medium">{user?.name}</span>
           <span className="text-muted-foreground truncate text-xs">
-            {user?.primaryEmailAddress?.emailAddress}
+            {user?.email}
           </span>
         </div>
       </SidebarMenuItem>

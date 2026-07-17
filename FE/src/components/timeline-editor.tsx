@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { Slider } from "@/components/ui/slider"
 import type { DraggableEvent, DraggableData } from 'react-draggable';
-import type { Clip } from '@/types';
+import type { ClipType } from '@/lib/types';
 import { Button } from './ui/button';
 import { IconCut, IconTrash } from '@tabler/icons-react';
 import { v4 as uuid } from "uuid"
@@ -10,46 +10,46 @@ import { toast } from 'sonner';
 
 
 type TimeLineProps = {
-    isPlaying:boolean,
+    isPlaying: boolean,
     handlePlayheadDrag: (time: number) => void,
     timelinecurrentTime: number,
-    clips: Required<Clip>[],
-    setCurrentClip: React.Dispatch<React.SetStateAction<Clip | null | undefined>>
-    setClips: React.Dispatch<React.SetStateAction<Required<Clip>[]>>,
-    getManifestFileAndCreateBlob: (videoId: string) => Promise<[string, null] | [null, string]>,
+    clips: Required<ClipType>[],
+    setVideoIds: React.Dispatch<React.SetStateAction<string[] | null>>,
+    setCurrentClip: React.Dispatch<React.SetStateAction<ClipType | null | undefined>>
+    setClips: React.Dispatch<React.SetStateAction<Required<ClipType>[]>>,
     setSaved: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 
 export default function TimelineEditor(props: TimeLineProps) {
 
-    const { isPlaying, timelinecurrentTime, clips, setClips, getManifestFileAndCreateBlob, setSaved, handlePlayheadDrag, setCurrentClip } = props
+    const { isPlaying, timelinecurrentTime, clips, setVideoIds, setClips, setSaved, handlePlayheadDrag, setCurrentClip } = props
 
     const [scale, setScale] = useState(100); // px/sec
     const playheadRef = useRef<HTMLDivElement>(null);
     const [duration, setDuration] = useState(100); // total timeline duration in sec
     const timelineRef = useRef<HTMLDivElement>(null);
-    const [selectedClip, setSelectedClip] = useState<string | null>(null) 
+    const [selectedClip, setSelectedClip] = useState<string | null>(null)
     const selectedClipRef = useRef(selectedClip)
 
-    useEffect(()=>{
+    useEffect(() => {
         selectedClipRef.current = selectedClip
-    },[selectedClip])
+    }, [selectedClip])
 
-    useEffect(()=>{
-        function handleClickOutside(e:MouseEvent){
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
             const target = e.target as HTMLElement
             const clipId = target.getAttribute("clip-id")
-            if(selectedClipRef.current != null && (!clipId || selectedClipRef.current != clipId)){
+            if (selectedClipRef.current != null && (!clipId || selectedClipRef.current != clipId)) {
                 setSelectedClip(null)
             }
         }
-        document.addEventListener("click",(e)=>handleClickOutside(e))
+        document.addEventListener("click", (e) => handleClickOutside(e))
         return () => {
-            document.removeEventListener("click",handleClickOutside)
+            document.removeEventListener("click", handleClickOutside)
         }
 
-    },[])
+    }, [])
 
     useEffect(() => {
         if (playheadRef.current) {
@@ -57,7 +57,7 @@ export default function TimelineEditor(props: TimeLineProps) {
         }
     }, [timelinecurrentTime, scale]);
 
-    function updateClips(updatedClip: Required<Clip>, isNew: boolean) {
+    function updateClips(updatedClip: Required<ClipType>, isNew: boolean) {
         setClips(prev => {
             let filtered = prev;
             if (!isNew) {
@@ -81,14 +81,14 @@ export default function TimelineEditor(props: TimeLineProps) {
         setDuration(() => maxEnd > 90 ? maxEnd + 10 : 100)
     }
 
-    const handleDragStop = (e: DraggableEvent, dragData: DraggableData, clip: Required<Clip>) => {
+    const handleDragStop = (e: DraggableEvent, dragData: DraggableData, clip: Required<ClipType>) => {
         e.preventDefault()
         const snapThreshold = 0.5; // seconds
         let newStart = dragData.x / scale
         let newEnd = newStart + (clip.timelineEndTime - clip.timelineStartTime)
 
-        let leftNeighbor: Required<Clip> | null = null
-        let rightNeighbor: Required<Clip> | null = null
+        let leftNeighbor: Required<ClipType> | null = null
+        let rightNeighbor: Required<ClipType> | null = null
         for (let i = 0; i < clips.length; i++) {
             const c = clips[i];
             if (c.id !== clip.id) {
@@ -104,8 +104,7 @@ export default function TimelineEditor(props: TimeLineProps) {
         if (leftNeighbor && Math.abs(newStart - leftNeighbor.timelineEndTime) <= snapThreshold) {
             newStart = leftNeighbor!.timelineEndTime
             newEnd = newStart + (clip.timelineEndTime - clip.timelineStartTime)
-        }
-        if (rightNeighbor && Math.abs(newEnd - rightNeighbor.timelineStartTime) <= snapThreshold) {
+        } else if (rightNeighbor && Math.abs(newEnd - rightNeighbor.timelineStartTime) <= snapThreshold) {
             newEnd = rightNeighbor!.timelineStartTime
             newStart = newEnd - (clip.timelineEndTime - clip.timelineStartTime)
         }
@@ -124,20 +123,20 @@ export default function TimelineEditor(props: TimeLineProps) {
 
         const clip = clips.find(c => timelinecurrentTime > c.timelineStartTime && timelinecurrentTime < c.timelineEndTime)
 
-        if(clip){
-            const firstClip = {...clip}
-            const secondClip = {...clip}
+        if (clip) {
+            const firstClip = { ...clip }
+            const secondClip = { ...clip }
 
             firstClip.label = `${clip.label} 1`
             firstClip.endTime = clip.startTime + (timelinecurrentTime - clip.timelineStartTime)
             firstClip.timelineEndTime = timelinecurrentTime
-            updateClips(firstClip,false)
+            updateClips(firstClip, false)
 
             secondClip.id = uuid()
             secondClip.label = `${clip.label} 2`
             secondClip.startTime = clip.startTime + (timelinecurrentTime - clip.timelineStartTime)
             secondClip.timelineStartTime = timelinecurrentTime
-            updateClips(secondClip,true)
+            updateClips(secondClip, true)
         }
 
     }
@@ -150,21 +149,12 @@ export default function TimelineEditor(props: TimeLineProps) {
         const droingPoint = dropX / scale;
 
         const data = e.dataTransfer.getData("text/json")
-        const clip: Required<Clip> = JSON.parse(data)
+        const clip: Required<ClipType> = JSON.parse(data)
 
         const length = clip.endTime
 
-
-        const [url, error] = await getManifestFileAndCreateBlob(clip.videoId)
-        if (!url) {
-            alert(error)
-            return
-        }
-
-        clip.url = url
-
-        let leftNeighbor: Required<Clip> | null = null;
-        let rightNeighbor: Required<Clip> | null = null;
+        let leftNeighbor: Required<ClipType> | null = null;
+        let rightNeighbor: Required<ClipType> | null = null;
         let overlap = false
         for (let i = 0; i < clips.length; i++) {
             const c = clips[i];
@@ -203,18 +193,22 @@ export default function TimelineEditor(props: TimeLineProps) {
             } else {
                 insertIndex = clips.findIndex(clip => clip.id = rightNeighbor.id)
             }
+
             setClips(prev => {
                 const newClips = [...prev];
                 newClips.splice(insertIndex, 0, clip);
                 return newClips;
             });
+
+            setVideoIds(videoIds => videoIds ? Array.from(new Set([...videoIds, clip.videoId])) : [clip.videoId])
+
             setSaved(false)
         } else {
             toast.warning(overlap ? "Overlap with existing clip." : "Not enough space at this position.");
         }
     }
 
-    
+
     return (
         <div className="flex flex-col flex-1 w-full px-2 mt-auto">
 
@@ -223,11 +217,11 @@ export default function TimelineEditor(props: TimeLineProps) {
                 {/* Delete button */}
                 <Button
                     variant={"ghost"}
-                    onClick={() => { 
-                        setClips((clips) => clips.filter((c)=> c.id !== selectedClip))
+                    onClick={() => {
+                        setClips((clips) => clips.filter((c) => c.id !== selectedClip))
                         setCurrentClip(null)
                     }}
-                    disabled = { selectedClip ? false : true }
+                    disabled={selectedClip ? false : true}
                 >
                     <IconTrash />
                 </Button>
@@ -235,7 +229,7 @@ export default function TimelineEditor(props: TimeLineProps) {
                 {/* cut button */}
                 <Button
                     variant={"ghost"}
-                    onClick={ handleCutClip }
+                    onClick={handleCutClip}
                 >
                     <IconCut />
                 </Button>
@@ -298,7 +292,7 @@ export default function TimelineEditor(props: TimeLineProps) {
                                     key={clip.id}
                                     clip-id={clip.id}
                                     className={`w-full h-full flex items-center justify-center px-2 truncate ${selectedClip === clip.id ? "border-2 rounded border-orange-500" : ""}`}
-                                    onClick={()=> !isPlaying && setSelectedClip(clip.id)}
+                                    onClick={() => !isPlaying && setSelectedClip(clip.id)}
                                 >
                                     <input
                                         placeholder='Enter Name'
@@ -320,7 +314,7 @@ export default function TimelineEditor(props: TimeLineProps) {
                             }}
                             position={{ x: timelinecurrentTime * scale, y: 0 }}
                             enableResizing={false}
-                            disableDragging = { isPlaying }
+                            disableDragging={isPlaying}
                             onDragStop={(e, d) => {
                                 e.preventDefault()
                                 handlePlayheadDrag(d.x / scale)

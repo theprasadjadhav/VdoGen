@@ -1,3 +1,6 @@
+import type z from "zod";
+import type { loginSchema, signupSchema, changePasswordSchema } from "./schema";
+
 export type ContentType = {
     id: string;
     prompt: string;
@@ -16,14 +19,14 @@ export type HistoryType = {
     firstPrompt: string,
 }
 
-export type projectType = {
+export type ProjectType = {
     id: string;
     name: string;
     videos?: { id: number; }[];
     data?: string;
 }
 
-export type Clip = {
+export type ClipType = {
     id: string;
     videoId: string;
     url?: string;
@@ -34,3 +37,22 @@ export type Clip = {
     timelineEndTime?: number;
 
 };
+
+export type AuthUserType = {
+    id: string;
+    name: string;
+    email: string | null;
+    useCount: number;
+    avatarUrl: string;
+    primeExpiry: Date;
+}
+
+export enum View {
+    CHAT,
+    EDITOR
+}
+
+
+export type LoginValuesType = z.infer<typeof loginSchema>;
+export type SignupValuesType = z.infer<typeof signupSchema>;
+export type ChangePasswordValuesType = z.infer<typeof changePasswordSchema>;

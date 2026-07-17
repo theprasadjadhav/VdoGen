@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
 import {
   IconVideo,
   IconSparkles,
@@ -19,7 +18,7 @@ import {
   IconAdjustments,
   IconLogout,
 } from '@tabler/icons-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   Button,
 } from '@/components/ui/button';
@@ -34,12 +33,17 @@ import {
   Badge,
 } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/hooks/use-Auth';
+import { baseAxios } from '@/lib/axios';
+import { toast } from "sonner";
+
 
 const Home: React.FC = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoInfoRef = useRef<HTMLDivElement>(null);
-  const { isSignedIn, signOut } = useAuth();
+  const { user, setUser } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleSmoothScroll = (e: Event) => {
@@ -60,7 +64,6 @@ const Home: React.FC = () => {
       anchor.addEventListener('click', handleSmoothScroll);
     });
 
-    // Intersection Observer for animations
     const observerOptions = {
       threshold: 0.1,
       rootMargin: '0px 0px -50px 0px',
@@ -130,25 +133,46 @@ const Home: React.FC = () => {
     }
   };
 
+
+  const signoutHandler = async () => {
+    try {
+      const res = await baseAxios.get("/auth/signout")
+
+      if (res.data?.success) {
+        setUser(undefined)
+      } else {
+        toast.error(res.data?.message || "Failed to sign out. Please try again.");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while signing out."
+      );
+    } finally {
+      navigate("/")
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden transition-colors">
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-3/4 right-1/4 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute bottom-1/4 left-1/3 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-2000" />
+        {/* Soft background glows with dark/light mode adjustments */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl animate-pulse bg-indigo-400/20 dark:bg-indigo-500/15" />
+        <div className="absolute top-3/4 right-1/4 w-48 h-48 rounded-full blur-3xl animate-pulse delay-1000 bg-purple-400/20 dark:bg-purple-500/15" />
+        <div className="absolute bottom-1/4 left-1/3 w-32 h-32 rounded-full blur-3xl animate-pulse delay-2000 bg-emerald-400/20 dark:bg-emerald-500/15" />
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border py-6">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border py-6 transition-colors">
         <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
           <a href="#" className="flex items-center gap-2 text-xl font-semibold">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-md flex items-center justify-center">
-              <IconVideo className=" text-white" />
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-md flex items-center justify-center">
+              <IconVideo className="text-white dark:text-zinc-950" />
             </div>
             <span className="inline text-base">VdoGen</span>
           </a>
-
           <div className="hidden md:flex gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
               Features
@@ -163,12 +187,11 @@ const Home: React.FC = () => {
               Pricing
             </a>
           </div>
-
-          {isSignedIn ? (
+          {user ? (
             <div className="flex gap-2.5">
               <Button
                 asChild
-                className="px-3 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-sm font-medium"
+                className="px-3 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg text-white dark:text-zinc-950 hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-sm font-medium"
               >
                 <Link to="/chat">
                   Dashboard
@@ -176,38 +199,37 @@ const Home: React.FC = () => {
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      onClick={() => signOut()}
-                      className="px-2 py-2 border border-border hover:-translate-y-0.5 rounded-lg text-white hover:bg-accent transition-all text-sm font-medium"
-                    >
-                      <IconLogout className="w-2 h-2" />
-                    </Button>
+                  <Button
+                    variant="outline"
+                    onClick={signoutHandler}
+                    className="px-2 py-2 border border-border hover:-translate-y-0.5 rounded-lg text-foreground hover:bg-accent transition-all text-sm font-medium"
+                  >
+                    <IconLogout className="w-2 h-2" />
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="center">
                   Sign out
                 </TooltipContent>
               </Tooltip>
-
             </div>
           ) : (
             <div className="flex gap-2.5">
               <Button
                 asChild
                 variant="outline"
-                className="px-3 py-2.5 border border-border rounded-lg text-white hover:bg-accent hover:-translate-y-0.5 transition-all text-sm font-medium"
+                className="px-3 py-2.5 border border-border rounded-lg text-foreground hover:bg-accent hover:-translate-y-0.5 transition-all text-sm font-medium"
               >
-                <a href={`https://wanted-fish-0.accounts.dev/sign-in?redirect_url=${import.meta.env.VITE_FRONTEND_URL}/chat`}>
-                  Sign In
-                </a>
+                <Link to="/log-in">
+                  Log In
+                </Link>
               </Button>
               <Button
                 asChild
-                className="px-3 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-sm font-medium"
+                className="px-3 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg text-white dark:text-zinc-950 hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-sm font-medium"
               >
-                <a href={`https://wanted-fish-0.accounts.dev/sign-in?redirect_url=${import.meta.env.VITE_FRONTEND_URL}/chat`}>
+                <Link to="/sign-up">
                   Sign Up
-                </a>
+                </Link>
               </Button>
             </div>
           )}
@@ -215,40 +237,36 @@ const Home: React.FC = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 text-center relative z-10">
+      <section className="pt-32 pb-16 text-center relative z-10 transition-colors">
         <div className="max-w-6xl mx-auto px-6">
           <Badge
             variant="secondary"
-            className="inline-flex items-center gap-2 bg-indigo-500/10 px-4 py-2 rounded-full text-sm text-indigo-400 mb-8"
+            className="inline-flex items-center gap-2 bg-indigo-400/15 dark:bg-indigo-500/10 px-4 py-2 rounded-full text-sm text-indigo-500 dark:text-indigo-400 mb-8"
           >
             <IconSparkles className="w-4 h-4" />
             <span>Powered by AI & Advanced Algorithms</span>
           </Badge>
-
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-8 tracking-tight">
             Transform{' '}
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-600 to-emerald-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-500 via-purple-600 to-emerald-500 dark:from-indigo-400 dark:via-purple-500 dark:to-emerald-400 bg-clip-text text-transparent">
               Ideas
             </span>{' '}
             into
             <br />
             Educational{' '}
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-600 to-emerald-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-500 via-purple-600 to-emerald-500 dark:from-indigo-400 dark:via-purple-500 dark:to-emerald-400 bg-clip-text text-transparent">
               Videos
             </span>
           </h1>
-
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12">
             Generate stunning mathematical and educational animations instantly.
             Just describe what you want, and our AI creates professional videos with built-in editing features.
           </p>
-
-          {!isSignedIn &&
-
+          {!user && (
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <Button
                 asChild
-                className="px-5 py-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-base font-medium flex items-center justify-center gap-2"
+                className="px-5 py-6 bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg text-white dark:text-zinc-950 hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all text-base font-medium flex items-center justify-center gap-2"
               >
                 <a href={`https://wanted-fish-0.accounts.dev/sign-in?redirect_url=${import.meta.env.VITE_FRONTEND_URL}/chat`}>
                   <IconRocket className="w-4 h-4" />
@@ -258,7 +276,7 @@ const Home: React.FC = () => {
               <Button
                 asChild
                 variant="outline"
-                className=" px-5 py-6 border border-border rounded-lg text-white hover:bg-accent transition-all text-base font-medium flex items-center justify-center gap-2"
+                className="px-5 py-6 border border-border rounded-lg text-foreground hover:bg-accent transition-all text-base font-medium flex items-center justify-center gap-2"
               >
                 <a href="#">
                   <IconPlayerPlay className="w-4 h-4" />
@@ -266,12 +284,11 @@ const Home: React.FC = () => {
                 </a>
               </Button>
             </div>
-          }
-
+          )}
           {/* Demo Video */}
-          <Card className="max-w-4xl mx-auto bg-card rounded-xl overflow-hidden border border-border relative">
+          <Card className="max-w-4xl mx-auto bg-card rounded-xl overflow-hidden border border-border relative transition-colors">
             <div
-              className="relative aspect-video bg-gradient-to-br from-indigo-500/10 to-purple-600/10 flex items-center justify-center cursor-pointer"
+              className="relative aspect-video bg-gradient-to-br from-indigo-400/15 to-purple-500/10 dark:from-indigo-500/10 dark:to-purple-600/10 flex items-center justify-center cursor-pointer"
               onClick={playDemo}
             >
               <video
@@ -283,17 +300,15 @@ const Home: React.FC = () => {
                 <source src="#" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-
               {!isVideoPlaying && (
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/15 hover:scale-105 transition-all">
+                <div className="w-16 h-16 bg-white/10 dark:bg-zinc-900/30 rounded-full flex items-center justify-center hover:bg-white/15 dark:hover:bg-zinc-900/40 hover:scale-105 transition-all">
                   <IconPlayerPlay className="w-5 h-5 ml-1" />
                 </div>
               )}
             </div>
-
             <div
               ref={videoInfoRef}
-              className="absolute top-4 left-4 bg-black/60 px-4 py-2 rounded-lg text-sm text-muted-foreground flex items-center gap-2"
+              className="absolute top-4 left-4 bg-black/60 dark:bg-zinc-900/70 px-4 py-2 rounded-lg text-sm text-muted-foreground flex items-center gap-2"
             >
               <IconClock className="w-4 h-4" />
               Generated in 12 seconds
@@ -303,7 +318,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16">
+      <section id="features" className="py-16 transition-colors">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4 tracking-tight">Why Choose VdoGen?</h2>
@@ -311,12 +326,11 @@ const Home: React.FC = () => {
               The most advanced AI-powered mathematical animation platform
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconBrain className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconBrain className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>AI-Powered Intelligence</CardTitle>
               </CardHeader>
@@ -328,8 +342,8 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconBolt className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconBolt className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>Lightning Fast</CardTitle>
               </CardHeader>
@@ -341,8 +355,8 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconEdit className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconEdit className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>Built-in Video Editor</CardTitle>
               </CardHeader>
@@ -354,8 +368,8 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconSchool className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconSchool className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>Education Ready</CardTitle>
               </CardHeader>
@@ -367,8 +381,8 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconDownload className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconDownload className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>High Quality Export</CardTitle>
               </CardHeader>
@@ -380,8 +394,8 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 hover:bg-card transition-all border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6">
-                  <IconAdjustments className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-lg flex items-center justify-center mb-6">
+                  <IconAdjustments className="w-6 h-6 text-white dark:text-zinc-950" />
                 </div>
                 <CardTitle>Advanced Customization</CardTitle>
               </CardHeader>
@@ -396,7 +410,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-16">
+      <section id="how-it-works" className="py-16 transition-colors">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4 tracking-tight">How It Works</h2>
@@ -404,11 +418,10 @@ const Home: React.FC = () => {
               Three simple steps to create professional animations
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center bg-card/90 border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white dark:text-zinc-950">
                   1
                 </div>
                 <CardTitle>Describe Your Vision</CardTitle>
@@ -421,7 +434,7 @@ const Home: React.FC = () => {
             </Card>
             <Card className="text-center bg-card/90 border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white dark:text-zinc-950">
                   2
                 </div>
                 <CardTitle>AI Generates Code</CardTitle>
@@ -434,7 +447,7 @@ const Home: React.FC = () => {
             </Card>
             <Card className="text-center bg-card/90 border border-border">
               <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 font-semibold text-white dark:text-zinc-950">
                   3
                 </div>
                 <CardTitle>Download & Use</CardTitle>
@@ -450,7 +463,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 ">
+      <section className="py-16 transition-colors">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4 tracking-tight">Start Creating Today</h2>
@@ -458,11 +471,10 @@ const Home: React.FC = () => {
               Join thousands of educators and creators using AI to create and edit educational videos
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="bg-card/90 border border-border text-center">
               <CardHeader>
-                <IconUsers className="w-8 h-8 text-indigo-500 mx-auto mb-4" />
+                <IconUsers className="w-8 h-8 text-indigo-500 dark:text-indigo-400 mx-auto mb-4" />
                 <CardTitle className="text-2xl font-bold mb-2">10K+</CardTitle>
                 <CardDescription className="text-muted-foreground text-sm">
                   Active Users
@@ -471,7 +483,7 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 border border-border text-center">
               <CardHeader>
-                <IconVideo className="w-8 h-8 text-purple-500 mx-auto mb-4" />
+                <IconVideo className="w-8 h-8 text-purple-500 dark:text-purple-400 mx-auto mb-4" />
                 <CardTitle className="text-2xl font-bold mb-2">50K+</CardTitle>
                 <CardDescription className="text-muted-foreground text-sm">
                   Videos Created
@@ -480,7 +492,7 @@ const Home: React.FC = () => {
             </Card>
             <Card className="bg-card/90 border border-border text-center">
               <CardHeader>
-                <IconClock className="w-8 h-8 text-emerald-500 mx-auto mb-4" />
+                <IconClock className="w-8 h-8 text-emerald-500 dark:text-emerald-400 mx-auto mb-4" />
                 <CardTitle className="text-2xl font-bold mb-2">12s</CardTitle>
                 <CardDescription className="text-muted-foreground text-sm">
                   Average Generation Time
@@ -492,17 +504,15 @@ const Home: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 border-t border-border">
+      <footer className="py-16 border-t border-border transition-colors">
         <div className="max-w-6xl mx-auto px-2">
-
           <div className="flex flex-col md:flex-row justify-between items-center mb-8">
             <a href="#" className="flex items-center gap-2 text-xl font-semibold mb-8 md:mb-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-md flex items-center justify-center">
-                <IconVideo className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 rounded-md flex items-center justify-center">
+                <IconVideo className="w-4 h-4 text-white dark:text-zinc-950" />
               </div>
               <span>VdoGen</span>
             </a>
-
             <div className="flex flex-wrap gap-8 justify-center mb-8 md:mb-0">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
                 Privacy Policy
@@ -520,7 +530,6 @@ const Home: React.FC = () => {
                 Blog
               </a>
             </div>
-
             <div className="flex gap-4">
               <Button asChild variant="ghost" size="icon" className="w-10 h-10 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
                 <a href="#">
@@ -544,7 +553,6 @@ const Home: React.FC = () => {
               </Button>
             </div>
           </div>
-
           <p className="text-center text-muted-foreground text-sm">
             © 2025 VdoGen. All rights reserved.
           </p>

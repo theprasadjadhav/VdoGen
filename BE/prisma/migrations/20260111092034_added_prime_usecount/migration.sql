@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "prime" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "useCount" INTEGER NOT NULL DEFAULT 0;

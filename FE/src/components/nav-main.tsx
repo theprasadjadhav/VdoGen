@@ -11,13 +11,15 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { ChevronRight } from "lucide-react"
 import React, { useEffect } from "react"
 import { useActiveConversation } from "@/hooks/use-active-conversation"
-import type { HistoryType } from "@/types"
+import type { HistoryType } from "@/lib/types"
 import { Link } from "react-router"
 import { Alert, AlertTitle } from "./ui/alert"
 import { Button } from "./ui/button"
-import { useAuth } from "@clerk/clerk-react"
+// import { useAuth } from "@clerk/clerk-react"
 import { baseAxios } from "@/lib/axios"
 import { toast } from "sonner"
+import { useAuth } from "@/hooks/use-Auth"
+import { ConfirmationDialog } from "./ui/confirmation-dialog"
 
 type NavMainProps = {
   history: HistoryType[],
@@ -29,7 +31,8 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
   const { state, setOpen } = useSidebar()
   const [isOpen, setIsOpen] = React.useState(true)
   const { activeConversation, setActiveConversation } = useActiveConversation()
-  const { getToken } = useAuth();
+  const { user, setUser } = useAuth()
+
 
   useEffect(() => {
     if (state === "collapsed") {
@@ -48,38 +51,35 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
 
   const deleteConversation = async (conversationId: string) => {
     try {
-      const token = await getToken()
-      if (!token) {
-        throw new Error("You need to be logged in. Please sign in and try again.");
+
+      if (!user) {
+        throw new Error('No authentication token available');
       }
-      const response = baseAxios.delete(
-        `/conversation/${conversationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+
+      const response = baseAxios.delete(`/content/conversation/${conversationId}`)
       toast.promise((response.then((res) => {
-        if (res.data.status === "success") {
+        if (res.status == 200 && res.data?.success && res.data?.status === "success") {
           setHistory((prev: HistoryType[]) => prev.filter((c: HistoryType) => c.id !== conversationId))
           setActiveConversation("new")
           return
+        } else if (res.status === 401) {
+          setUser(undefined);
+          throw new Error("Authentication required. Please log in.")
         } else {
-          throw new Error("failed to delete conversation")
+          throw new Error(res.data?.message ?? "failed to delete conversation")
         }
       }).catch((e) => {
         throw e
       }))
         ,
-      {
-        loading: "Deleting conversation...",
-        success: "Conversation deleted successfully.",
-        error: "Failed to delete conversation."
-      }
+        {
+          loading: "Deleting conversation...",
+          success: "Conversation deleted successfully.",
+          error: "Failed to delete conversation."
+        }
       )
     } catch (error) {
-      const message = error instanceof Error ?  error.message : "Failed to delete Conversation"
+      const message = error instanceof Error ? error.message : "Failed to delete Conversation"
       toast.error(message)
     }
   }
@@ -93,7 +93,7 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
           <SidebarMenuItem className="flex items-center gap-2">
             <SidebarMenuButton
               tooltip="New Chat"
-              className="hover:bg-primary/70 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+              className="hover:bg-primary/70 hover:cursor-pointer hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
               onClick={() => {
                 setActiveConversation("new")
               }}
@@ -111,7 +111,7 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
             <Link to={"/editor"} className="w-full">
               <SidebarMenuButton
                 tooltip="Editor"
-                className="hover:bg-primary/70 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+                className="hover:bg-primary/70 hover:cursor-pointer hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
               >
                 <IconMovie />
                 <span>Editor</span>
@@ -132,7 +132,7 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
               <SidebarMenuButton
                 tooltip="History"
                 onClick={toggleCollapsible}
-                className="hover:bg-primary/70 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+                className="hover:bg-primary/70 hover:cursor-pointer hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
               >
                 <IconHistory />
                 <span>History</span>
@@ -151,35 +151,41 @@ export function NavMain({ history, setHistory, historyError }: NavMainProps) {
                     </Alert>
                     :
                     <SidebarMenu className="overflow-y-auto flex-1">
-                      {history.map((item) => (
-                        <SidebarMenuItem key={item.id} className="group/item">
-                          <div className="flex items-center w-full">
-                            <SidebarMenuButton
-                              asChild
-                              isActive={item.id === activeConversation}
-                              onClick={() => {
-                                setActiveConversation(item.id)
-                              }}
-                              className="flex-1"
-                            >
-                              <div className="flex items-center justify-between w-full">
+                      {history && history.map((item) => (
+                        <SidebarMenuItem
+                          key={item.id}
+                          className="group/item"
+                        >
+                          <SidebarMenuButton
+                            asChild
+                            isActive={item.id === activeConversation}
+                            className="flex-1"
+                          >
+                            <div className="flex justify-between w-full">
+                              <Button
+                                variant="ghost"
+                                className="flex-1 px-0 justify-start items-start text-left pl-1 font-normal min-w-0"
+                                onClick={() => setActiveConversation(item.id)}
+                              >
                                 <span className="truncate">{item.firstPrompt}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="ml-2 p-1 z-20 cursor-pointer rounded group-hover/item:opacity-100 opacity-0 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                                  title="Delete"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    deleteConversation(item.id)
-                                  }}
-                                >
-                                  <IconTrash size={16} />
-                                </Button>
-                              </div>
-                            </SidebarMenuButton>
-
-                          </div>
+                              </Button>
+                              <ConfirmationDialog
+                                trigger={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="cursor-pointer rounded opacity-0 group-hover/item:opacity-100 group-hover/item:flex group-hover/item:w-auto group-hover/item:h-auto group-hover/item:p-1 group-hover/item:m-0 h-0 w-0 m-0 p-0 overflow-hidden hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all duration-200"
+                                    title="Delete"                               
+                                  >
+                                    <IconTrash size={16} />
+                                  </Button>
+                                }
+                                title="Delete Conversation"
+                                description="Are you sure you want to delete this conversation? This action cannot be undone."
+                                onConfirm={() => deleteConversation(item.id)}
+                              />
+                            </div>
+                          </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
                     </SidebarMenu>

@@ -11,41 +11,37 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { baseAxios } from "@/lib/axios"
-import type { projectType } from "@/types"
-import { useAuth } from "@clerk/clerk-react"
+import type { ProjectType } from "@/lib/types"
 import { IconPlus } from "@tabler/icons-react"
 import { useRef } from "react"
 import { toast } from "sonner"
+import { useAuth } from '@/hooks/use-Auth';
 
-export function ProjectCreateDialog({ setProjects }: { setProjects: React.Dispatch<React.SetStateAction<projectType[] | null>> }) {
+export function ProjectCreateDialog({ setProjects }: { setProjects: React.Dispatch<React.SetStateAction<ProjectType[] | null>> }) {
 
-    const { getToken } = useAuth()
+    const { user,setUser } = useAuth()
     const inputBoxRef = useRef<HTMLInputElement | null>(null)
 
     async function createProject() {
         try {
-            const token = await getToken()
-
-            if (!token) {
-                throw new Error("No authentication token found")
+            
+            if (!user) {
+                throw new Error('No authentication token available');
             }
 
             const projectName = inputBoxRef.current?.value || ""
 
-            const response = await baseAxios.post(
-                "/project",
-                { projectName },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            )
-
-            if (response.status != 200) {
-                throw new Error(response.data.message)
+            const response = await baseAxios.post("/project",{ 
+                projectName 
+            })
+            if (response.status === 401) {
+                setUser(undefined);
+                throw new Error ("Authentication required. Please log in.")
             }
-            const createdProject: projectType = response.data
+            if (response.status != 200) {
+                throw new Error(response.data?.message ?? "Failed to create project")
+            }
+            const createdProject: ProjectType = response.data.project
             setProjects(prev => prev ? [...prev, createdProject] : [createdProject])
 
         } catch (e) {
@@ -53,6 +49,8 @@ export function ProjectCreateDialog({ setProjects }: { setProjects: React.Dispat
             toast.error(message)
         }
     }
+
+    
 
     return (
         <Dialog>

@@ -1,6 +1,6 @@
 FROM oven/bun:1
 
-WORKDIR /worker
+WORKDIR /videoGeneratorWorker
 
 COPY package*.json ./
 COPY bun.lock ./
@@ -15,5 +15,4 @@ RUN bunx prisma generate
 
 COPY src ./src
 
-CMD ["bun","run", "src/worker/worker.ts"]
-
+CMD ["bun","run", "src/workers/video-generator-worker.ts"]

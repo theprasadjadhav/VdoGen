@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@clerk/clerk-react";
+// import { useAuth } from "@clerk/clerk-react";
 import { baseAxios } from "@/lib/axios";
 import { toast } from "sonner";
-import type { ContentType, projectType } from "@/types";
+import type { ContentType, ProjectType } from "@/lib/types";
 import { Button } from '@/components/ui/button';
+import { AddVideoToProjectFormSchema as FormSchema } from "@/lib/schema";
 import {
     Dialog,
     DialogClose,
@@ -27,10 +28,7 @@ import {
 } from "@/components/ui/form";
 import { Checkbox } from "./ui/checkbox";
 import { IconFolderPlus } from "@tabler/icons-react";
-
-const FormSchema = z.object({
-    projectIds: z.array(z.string())
-});
+import { useAuth } from "@/hooks/use-Auth";
 
 type AddVideoToProjectDialogProps = {
     contentItem: ContentType;
@@ -38,8 +36,8 @@ type AddVideoToProjectDialogProps = {
 };
 
 export function AddVideoToProjectDialog({ contentItem, onVideoAdded }: AddVideoToProjectDialogProps) {
-    const [projects, setProjects] = useState<projectType[] | null>(null);
-    const { getToken } = useAuth();
+    const [projects, setProjects] = useState<ProjectType[] | null>(null);
+    const { user, setUser } = useAuth()
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
@@ -58,34 +56,32 @@ export function AddVideoToProjectDialog({ contentItem, onVideoAdded }: AddVideoT
     };
 
     async function onSubmit(data: z.infer<typeof FormSchema>) {
-        const token = await getToken();
 
-        if (!token) {
-            toast.error("You need to be logged in. Please sign in and try again.");
-            return;
+        if (!user) {
+            throw new Error('No authentication token available');
         }
 
         const promise = baseAxios.post("/project/add-video", {
             projectIds: data.projectIds,
             videoId: contentItem.id
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
         });
 
         toast.promise(promise.then((res) => {
             if (res.status == 200) {
                 onVideoAdded(contentItem.id, data.projectIds);
                 return data;
+            }
+            else if (res.status === 401) {
+                setUser(undefined);
+                throw new Error("Authentication required. Please log in.")
             } else {
-                throw new Error();
+                throw new Error("Oops! Something went wrong. Please try again.");
             }
         }),
             {
                 loading: "Updating your project(s)...",
                 success: () => "video has been updated in your selected project(s) successfully",
-                error: "Oops! Something went wrong. Please try again."
+                error: (e) => e instanceof Error ? e.message : "An error occurred while updating your project(s)",
             }
         );
     }
@@ -93,23 +89,23 @@ export function AddVideoToProjectDialog({ contentItem, onVideoAdded }: AddVideoT
     useEffect(() => {
         async function getProjects() {
             try {
-                const token = await getToken();
 
-                if (!token) {
-                    throw new Error("unauthenticated");
+                if (!user) {
+                    throw new Error('No authentication token available');
                 }
 
-                const res = await baseAxios.get("/project", {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
+                const res = await baseAxios.get("/project");
 
-                if (res.status != 200) {
+                if (res.status === 401) {
+                    setUser(undefined);
+                    throw new Error ("Authentication required. Please log in.")
+                }
+
+                if (res.status != 200 || !res.data.success) {
                     throw new Error("failed to fetch projects");
                 }
 
-                const projects: projectType[] = res.data;
+                const projects: ProjectType[] = res.data.projects;
                 setProjects(projects);
             } catch (e) {
                 toast.error(e instanceof Error ? e.message : "An error occurred while fetching projects");
@@ -117,7 +113,7 @@ export function AddVideoToProjectDialog({ contentItem, onVideoAdded }: AddVideoT
         }
 
         getProjects();
-    }, [getToken]);
+    }, [user]);
 
     return (
         <>

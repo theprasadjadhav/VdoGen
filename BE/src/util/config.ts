@@ -1,67 +1,158 @@
 import * as k8s from "@kubernetes/client-node";
 import { PrismaClient } from "../../generated/prisma";
 import Anthropic from "@anthropic-ai/sdk";
-import Bull from "bull";
-import Redis from "ioredis";
-import type { JobData, StatusJobData } from "../types/types";
+import { Queue } from "bullmq";
+import IORedis, { Redis, type RedisOptions } from 'ioredis';
+import type { JobData, StatusJobData } from "../types";
 import { Storage } from "@google-cloud/storage";
-import pino from 'pino';
-import path from 'path';
+import pino from "pino";
+import path from "path";
+import Razorpay from "razorpay";
+import type { CookieOptions } from "express";
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Kubernetes Configuration
-const kc = new k8s.KubeConfig();
-try {
-    kc.loadFromDefault(); // automatically loads from ~/.kube/config or service account in cluster
-} catch (error) {
-    throw new Error('Failed to initialize Kubernetes client');
+const requiredEnvVars = [                                                                                                                                      
+    "JWT_SECRET",                                                                                                                                              
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",                                                                                                                                     
+    "RAZORPAY_WEBHOOK_SECRET",
+    "DEEPSEEK_API_KEY",                                                                                                                                        
+    "REDIS_URL",
+];                                                                                                                                                             
+                                                                                                                                                               
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {                                                                                                                                
+        console.error(`Missing required environment variable: ${envVar}`);
+        process.exit(1);                                                                                                                                       
+    }
+}  
+
+export const JWT_SECRET = process.env.JWT_SECRET!;
+
+let logger: pino.Logger;
+
+if (isProduction) {
+    logger = pino({
+        level: 'info',
+        formatters: {
+            level(label) {
+                return { level: label };
+            }
+        },
+        timestamp: pino.stdTimeFunctions.isoTime,
+        serializers: {
+            req: pino.stdSerializers.req,
+            res: pino.stdSerializers.res,
+            err: pino.stdSerializers.err
+        }
+    })
+} else {
+    logger = pino({
+        level: 'debug',
+        timestamp: pino.stdTimeFunctions.isoTime,
+        serializers: {
+            req: pino.stdSerializers.req,
+            res: pino.stdSerializers.res,
+            err: pino.stdSerializers.err
+        }
+    })
 }
 
-export const k8sBatchClient = kc.makeApiClient(k8s.BatchV1Api);
-export const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
-export { kc, k8s };
+export { logger };
+
+//Kubernetes Configuration
+const kc = new k8s.KubeConfig();
+try {
+    logger.info({ msg: 'Initializing Kubernetes client from cluster' });
+    kc.loadFromCluster();
+} catch (error) {
+    logger.error({ msg: 'Failed to initialize Kubernetes client from cluster ', error: error });
+
+    try {
+        logger.info({ msg: 'Falling back to default KubeConfig' });
+        kc.loadFromDefault();
+    } catch (error) {
+        logger.error({ msg: 'Failed to initialize Kubernetes client', error: error });
+        throw new Error('Failed to initialize Kubernetes client');
+    }
+}
+
+const k8sBatchClient = kc.makeApiClient(k8s.BatchV1Api);
+const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const watch = new k8s.Watch(kc);
+const namespace = "vdogen"
+export { kc, k8s, k8sBatchClient, k8sApi, watch, namespace };
+
 
 // Prisma Configuration
 export const prismaClient = new PrismaClient();
 
+
 // Anthropic Configuration
 export { Anthropic };
-export const anthropic = new Anthropic();
+export const anthropic = new Anthropic({
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+    baseURL: "https://api.deepseek.com/anthropic",
+  });;
 
 // Google Cloud Storage Configuration
 export const storage = new Storage();
 export const bucketName = 'vdogen';
 
 // Redis Configuration
-const redisConfig = {
-    username: process.env.REDIS_USERNAME,
-    password: process.env.REDIS_PASSWORD,
+const redisConfig:RedisOptions = {
+    username: process.env.REDIS_USERNAME || "",
+    password: process.env.REDIS_PASSWORD || "",
     host: process.env.REDIS_URL,
-    port: Number(process.env.REDIS_PORT) || 16799,
+    port: Number(process.env.REDIS_PORT) || 6379,
+    // tls: process.env.NODE_ENV === "production" ? {} : undefined,
     retryStrategy: (times: number) => {
-        const delay = Math.min(times * 50, 2000);
+        const delay = Math.min(times * 50, 3000);
         return delay;
     },
-    maxRetriesPerRequest: 3
+    maxRetriesPerRequest: null
 };
 
-// Initialize Redis client with error handling
+
+
 let redis: Redis;
 try {
-    redis = new Redis(redisConfig);
+    redis = new IORedis(redisConfig);
     redis.on('error', (error) => {
-        console.error('Redis connection error:', error);
+        logger.error({ 
+            msg: 'Redis connection error', 
+            error: error.message,
+            stack: error.stack 
+        });
+    });
+    redis.on('connect', () => {
+        logger.info({ 
+            msg: 'Redis client connected',
+            usingConnectionString: typeof redisConfig === 'string'
+        });
+    });
+    redis.on('ready', () => {
+        logger.info({ msg: 'Redis client ready' });
+    });
+    redis.on('close', () => {
+        logger.warn({ msg: 'Redis connection closed' });
     });
 } catch (error) {
-    console.error('Failed to initialize Redis client:', error);
+    logger.error({ 
+        msg: 'Failed to initialize Redis client', 
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+    });
     throw new Error('Failed to initialize Redis client');
 }
-export { redis };
 
-// Job Queue Configuration
-export const JobQueue = new Bull<JobData>('job-Queue', {
-    redis: redisConfig,
+export { redis, redisConfig }
+
+
+//Job Queue Configuration
+export const JobQueue = new Queue<JobData>('Job-Queue', {
+    connection: redisConfig,
     defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: true
@@ -69,8 +160,8 @@ export const JobQueue = new Bull<JobData>('job-Queue', {
 });
 
 // Status Queue Configuration
-export const StatusQueue = new Bull<StatusJobData>('Status-Queue', {
-    redis: redisConfig,
+export const StatusQueue = new Queue<StatusJobData>('Status-Queue', {
+    connection: redisConfig,
     defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: true
@@ -78,8 +169,23 @@ export const StatusQueue = new Bull<StatusJobData>('Status-Queue', {
 });
 
 
+export const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+
+export const cookieOptions:CookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+};
+
+
+
+
 process.on('SIGTERM', async () => {
-    console.log('Received SIGTERM. Closing connections...');
+    logger.info('Received SIGTERM. Closing connections...');
     await Promise.all([
         prismaClient.$disconnect(),
         redis.quit(),
@@ -88,37 +194,3 @@ process.on('SIGTERM', async () => {
     ]);
     process.exit(0);
 });
-
-
-// logger config
-
-export const logger = {
-    info: console.info,
-    error: console.error,
-    log:console.log
-}
-
-// const isProduction = process.env.NODE_ENV === 'production';
-// let logger: pino.Logger;
-
-// if (isProduction) {
-//     const logDirectory = path.join(process.cwd(), 'logs');
-//     const logFile = path.join(logDirectory, 'app.log');
-//   logger = pino({
-//     level: 'info',
-//     formatters: {
-//       level(label) {
-//         return { level: label };
-//       }
-//     },
-//     timestamp: pino.stdTimeFunctions.isoTime,
-//     base: undefined, 
-//   }, pino.destination({ dest: logFile, minLength: 4096, sync: false }));
-// } else {
-//   logger = pino({
-//   level: 'debug',
-//   timestamp: pino.stdTimeFunctions.isoTime,
-// });
-// }
-
-// export { logger };

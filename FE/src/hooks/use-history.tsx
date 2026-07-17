@@ -1,37 +1,37 @@
 import { baseAxios } from "@/lib/axios"
 import { useEffect, useState } from "react"
-import { useAuth } from "@clerk/clerk-react";
-import type { HistoryType } from "@/types";
+import type { HistoryType } from "@/lib/types";
+import { useAuth } from "./use-Auth";
 
 export const useHistory = () => {
     const [history, setHistory] = useState<HistoryType[]>([])
     const [historyError, setHistoryError] = useState<string | null>(null);
     const [historyLoading, setLoading] = useState(true);
 
-    const { getToken } = useAuth()
+    const { user,setUser } = useAuth()
+
 
     useEffect(() => {
 
         async function getHistory() {
             try {
                 setLoading(true)
-                const token = await getToken()
-
-                if(!token){
-                    throw new Error("No authentication token available")
+               
+                if (!user) {
+                    throw new Error('No authentication token available');
                 }
 
-                const res = await baseAxios.get("/history", {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                })
+                const res = await baseAxios.get("/content/history")
 
-                if(res.status!=200){
-                    throw new Error("Internal server error: Failed to fetch content")
+                if (res.status === 401) {
+                    setUser(undefined);
+                    throw new Error ("Authentication required. Please log in.")
+                }
+                if(res.status!=200 || !res.data?.success){
+                    throw new Error(res.data?.message ?? "Internal server error: Failed to fetch content")
                 }
 
-                const history: HistoryType[] = res.data
+                const history: HistoryType[] = res.data.history
                 setHistory(history)
                 setHistoryError(null)
             } catch (err) {

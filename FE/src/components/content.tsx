@@ -1,13 +1,13 @@
 import { videoStatusEnum } from "@/lib/enums";
 import { Alert, AlertTitle } from "./ui/alert";
 import { IconAlertCircle, IconDownload } from "@tabler/icons-react";
-import type { ContentType } from "@/types";
+import type { ContentType } from "@/lib/types";
 import { VideoHolder } from "./video-holder";
 import { Button } from "./ui/button";
 import { AddVideoToProjectDialog } from "./add-video-to-project-dialog";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/clerk-react";
 import { baseAxios } from "@/lib/axios";
+import { useAuth } from "@/hooks/use-Auth";
 
 type ContentComponentType = {
     content: ContentType[],
@@ -16,30 +16,29 @@ type ContentComponentType = {
 
 export default function Content({ content, handleVideoAdded }: ContentComponentType) {
 
-    const { getToken } = useAuth()
+    const { user, setUser } = useAuth()
 
     async function downloadVideo(id: string) {
 
         try {
 
-            const token = await getToken()
-
-            if (!token) {
-                throw new Error("User not authenticated")
+            if (!user) {
+                throw new Error('No authentication token available');
             }
             const response = baseAxios.get(`/video/download?videoId=${id}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                responseType: "blob",
+                responseType: "blob"
             });
 
 
             toast.promise(response.then((res) => {
-                if (!res || res.status !== 200) {
-                    throw new Error(res.data.message);
+               
+                if (res.status === 401) {
+                    setUser(undefined);
+                    throw new Error ("Authentication required. Please log in.")
                 }
-
+                if (!res || res.status !== 200) {
+                    throw new Error(res.data?.message);
+                }
                 const contentType = res.headers?.["content-type"] || "video/mp4";
                 const blob = new Blob([res.data], { type: contentType });
                 const downloadUrl = window.URL.createObjectURL(blob);
@@ -74,11 +73,6 @@ export default function Content({ content, handleVideoAdded }: ContentComponentT
                             {c.prompt}
                         </pre>
 
-                        {c.isError && (
-                            <pre className="w-3/4 mr-auto whitespace-pre-wrap break-words bg-muted/50 p-4 rounded-lg">
-                                {c.error}
-                            </pre>
-                        )}
                         {c.status != videoStatusEnum.COMPLETE && (
                             <pre className=" mr-auto whitespace-pre-wrap break-words ">
 

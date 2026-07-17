@@ -1,1 +1,12 @@
-/// <reference types="@clerk/express/env" />
+import type { Request } from "express";
+import type { jwtType } from ".";
+
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: jwtType['data'];
+    }
+  }
+}
+
