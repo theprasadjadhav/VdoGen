@@ -146,7 +146,7 @@ bun run src/workers/status-check-worker.ts
 ### Video — `/video`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/video/gen` | Generate video from prompt |
+| POST | `/video/create` | Generate video from prompt |
 | GET | `/video/status?id=` | Poll video status (Redis → DB fallback) |
 | GET | `/video/:id/manifest?type=preview\|edit` | Get HLS manifest with signed segment URLs |
 | GET | `/video/download?videoId=` | Stream video as MP4 via ffmpeg |
