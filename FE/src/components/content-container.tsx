@@ -60,7 +60,7 @@ export function ContentContainer({ ...props }: ChatContentType) {
                 }
             }
 
-            const genResponse = await baseAxios.post("/video/gen",
+            const genResponse = await baseAxios.post("/video/create",
                 {
                     prompt: data.prompt,
                     specs: data.specs,

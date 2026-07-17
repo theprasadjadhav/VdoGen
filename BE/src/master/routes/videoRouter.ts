@@ -75,7 +75,7 @@ videoRouter.get("/:id/manifest", async (req, res) => {
 });
 
 
-videoRouter.post("/gen", videoGenLimiter, validateInputs, async (req, res) => {
+videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) => {
     let conversationId = req.body.conversationId
     const prompt = String(req.body.prompt)
     const specs: VideoSpecsType = req.body.specs
