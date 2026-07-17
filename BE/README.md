@@ -128,26 +128,47 @@ bun run src/workers/status-check-worker.ts
 ### Auth — `/auth`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/auth/signup` | Register with email/password |
 | POST | `/auth/signin` | Login with email/password |
+| POST | `/auth/signup` | Register with email/password |
 | POST | `/auth/google` | Google OAuth login |
-| POST | `/auth/signout` | Logout (clears cookie) |
-| GET | `/auth/me` | Get current user |
+| GET | `/auth/signout` | Logout (clears cookie) |
+| GET | `/auth/me` | Get current user (fresh DB fetch) |
+| GET | `/auth/identities` | List linked auth providers for user |
+| POST | `/auth/change-password` | Change password (email users only) |
 
 ### Video — `/video`
 | Method | Path | Description |
 |---|---|---|
 | POST | `/video/create` | Generate video from prompt |
-| GET | `/video/status/:id` | Poll video status |
-| GET | `/video/stream/:id` | Get HLS stream URL |
+| GET | `/video/status?id=` | Poll video status (Redis → DB fallback) |
+| GET | `/video/:id/manifest?type=preview\|edit` | Get HLS manifest with signed segment URLs |
+| GET | `/video/download?videoId=` | Stream video as MP4 via ffmpeg |
+
+### Content — `/content`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/content/history` | List all conversations for user |
+| GET | `/content/conversation/:conversationId` | Get paginated videos in a conversation |
+| DELETE | `/content/conversation/:conversationId` | Delete conversation + GCS files |
+
+### Project — `/project`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/project` | List all editor projects |
+| POST | `/project` | Create new project |
+| GET | `/project/:projectId` | Get project with videos |
+| PATCH | `/project` | Update project timeline data |
+| DELETE | `/project/:projectId` | Delete project |
+| POST | `/project/add-video` | Assign video to project(s) |
+| POST | `/project/render?projectId=` | Start project video render |
+| GET | `/project/render/status?jobId=` | Poll render job status |
 
 ### Payment — `/payment`
 | Method | Path | Description |
 |---|---|---|
+| POST | `/payment/webhook` | Razorpay webhook handler (no auth) |
 | POST | `/payment/pay` | Create Razorpay order |
-| POST | `/payment/verify` | Verify payment & activate plan |
-| POST | `/payment/webhook` | Razorpay webhook handler |
-| GET | `/payment/status` | Get subscription status |
+| POST | `/payment/status?payment_id=` | Get payment status + updated user data |
 
 ## Docker
 
