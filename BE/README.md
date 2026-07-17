@@ -72,35 +72,42 @@ Create a `.env` file:
 
 ```env
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/vdogen
+DATABASE_URL=
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# AI
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-sonnet-4-5
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-pro
+MAX_TOKENS=6000
+AI_PROVIDER=deepseek              # "anthropic" or "deepseek"
 
-# JWT
-JWT_SECRET=your-secret-key-min-32-chars
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-
-# Google Cloud Storage
-GCS_BUCKET_NAME=your-bucket-name
-
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Razorpay
-RAZORPAY_KEY_ID=rzp_live_...
-RAZORPAY_KEY_SECRET=your-razorpay-secret
-RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
+# Google Cloud (path to service account JSON)
+GOOGLE_APPLICATION_CREDENTIALS=
 
 # App
-PORT=3000
-NODE_ENV=development
-FRONTEND_URL=http://localhost:5173
+PORT=8081
 
-# Kubernetes
-K8S_NAMESPACE=script-runner
+# Redis
+REDIS_URL=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+
+# Auth / CORS
+JWT_SECRET=
+AUTHORIZED_PARTY=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173
+
+# Google OAuth
+GOOGLE_AUTH_CLIENT_ID=
+GOOGLE_AUTH_CLIENT_SECRET=
+GOOGLE_AUTH_REDIRECT_URL=http://localhost:8081/v1/auth/google/callback
+
+# Razorpay
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
 ```
 
 ### 3. Database setup
@@ -139,7 +146,7 @@ bun run src/workers/status-check-worker.ts
 ### Video — `/video`
 | Method | Path | Description |
 |---|---|---|
-| POST | `/video/create` | Generate video from prompt |
+| POST | `/video/gen` | Generate video from prompt |
 | GET | `/video/status?id=` | Poll video status (Redis → DB fallback) |
 | GET | `/video/:id/manifest?type=preview\|edit` | Get HLS manifest with signed segment URLs |
 | GET | `/video/download?videoId=` | Stream video as MP4 via ffmpeg |
