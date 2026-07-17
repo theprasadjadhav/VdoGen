@@ -102,7 +102,13 @@ export function ContentContainer({ ...props }: ChatContentType) {
         //     chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         // }
 
-        if (content?.at(-1)?.status === videoStatusEnum.PROCESSING || content?.at(-1)?.status === videoStatusEnum.INITIATED) {
+        if (
+            content &&
+            content.length > 0 &&
+            (content[content.length - 1].status === videoStatusEnum.PROCESSING ||
+             content[content.length - 1].status === videoStatusEnum.INITIATED)
+        ) {
+   
             setSearchAreaDisabled(true)
         } else {
             setSearchAreaDisabled(false)
