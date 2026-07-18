@@ -10,14 +10,14 @@ import { authMiddleware } from "./middlewares";
 import cookieParser from "cookie-parser"
 import { sendError } from "./functions";
 import paymentRoute from "./routes/paymentRoute";
-import { glovalLimiter } from "./rateLimiters";
+import { globalLimiter } from "./rateLimiters";
 
 const app = express()
 
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 app.use(cors({ origin: corsOrigin, credentials:true }));
 
-app.use(glovalLimiter)
+app.use(globalLimiter)
 
 
 app.use((req: Request, res: Response, next: NextFunction) => {

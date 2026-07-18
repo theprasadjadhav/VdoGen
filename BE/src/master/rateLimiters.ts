@@ -41,7 +41,7 @@ export const paymentLimiter = createRateLimiter({
     message: "Too many payment attempts, try again later",
 });             
 
-export const glovalLimiter = createRateLimiter({
+export const globalLimiter = createRateLimiter({
     keyFn: (req) => `global:${req.ip}`,
     limit: 100,
     windowSec: 60,    // 1 min
