@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VdoGen — Math Animations from Plain Text</title>
+  <meta name="description" content="Describe a math concept in plain English. VdoGen generates a Manim animation video in seconds. Used by educators, students, and researchers." />
+  <meta property="og:title" content="VdoGen — Math Animations from Plain Text" />
+  <meta property="og:description" content="Describe a math concept. Get a professional animation video in seconds." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#06060b" />
+  <link rel="icon" href="/favicon.svg" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #06060b;
+      --bg2:      #0d0d18;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --text:     #e4e4f0;
+      --muted:    #64648a;
+      --accent:   #6366f1;
+      --accent2:  #818cf8;
+      --green:    #34d399;
+      --violet:   #a78bfa;
+      --glow:     rgba(99,102,241,0.18);
+      --radius:   10px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── UTILITY ────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ─── NAV ────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6,6,11,0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+    }
+
+    .logo-mark {
+      width: 30px; height: 30px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .logo-mark svg { width: 16px; height: 16px; fill: #fff; }
+
+    .nav-links {
+      display: flex; gap: 32px; list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px; color: var(--muted);
+      transition: color 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      display: flex; gap: 10px; align-items: center;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; border: none;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      text-decoration: none;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 0 0 var(--glow);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 24px var(--glow); }
+
+    .btn-lg {
+      padding: 12px 28px;
+      font-size: 14px;
+      border-radius: 11px;
+    }
+
+    /* ─── HERO ───────────────────────────────────── */
+    .hero {
+      padding: 140px 0 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* subtle grid lines */
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent);
+      pointer-events: none;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+      top: -100px; left: 50%; transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      position: relative;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 24px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: block; width: 24px; height: 1px;
+      background: var(--accent2);
+    }
+
+    .hero-heading {
+      font-size: clamp(36px, 4.5vw, 58px);
+      font-weight: 800;
+      line-height: 1.07;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+    }
+
+    .hero-heading em {
+      font-style: normal;
+      color: var(--accent2);
+    }
+
+    .hero-sub {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 420px;
+      margin-bottom: 36px;
+    }
+
+    .hero-actions {
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+
+    /* ─── TERMINAL ───────────────────────────────── */
+    .terminal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.1);
+    }
+
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.025);
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #28c840; }
+
+    .terminal-title {
+      margin-left: 8px;
+      font-size: 11px; color: var(--muted);
+      font-family: monospace;
+    }
+
+    .terminal-body {
+      padding: 20px;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+      font-size: 12.5px;
+      line-height: 1.8;
+      min-height: 280px;
+    }
+
+    .t-prompt {
+      color: var(--muted);
+      display: flex; gap: 10px;
+    }
+
+    .t-prompt-sym { color: var(--green); }
+
+    .t-input { color: var(--text); }
+
+    .t-cursor {
+      display: inline-block;
+      width: 7px; height: 14px;
+      background: var(--accent2);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+
+    .t-output { margin-top: 12px; }
+
+    .t-line { display: flex; gap: 8px; color: var(--muted); margin: 2px 0; }
+    .t-label { color: var(--accent2); min-width: 90px; }
+    .t-val-green { color: var(--green); }
+    .t-val-violet { color: var(--violet); }
+    .t-val-white { color: var(--text); }
+
+    .t-result {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: rgba(52,211,153,0.07);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 8px;
+      color: var(--green);
+      font-size: 12px;
+    }
+
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+
+    /* ─── TICKER ─────────────────────────────────── */
+    .ticker-wrap {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .ticker-wrap::before,
+    .ticker-wrap::after {
+      content: '';
+      position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2;
+    }
+    .ticker-wrap::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+    .ticker-wrap::after  { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+
+    .ticker-track {
+      display: flex; gap: 0;
+      animation: ticker 30s linear infinite;
+      white-space: nowrap;
+      width: max-content;
+    }
+
+    .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+
+    .ticker-item {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 0 32px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    .ticker-item::before {
+      content: '›';
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ─── SECTION BASE ───────────────────────────── */
+    section { padding: 96px 0; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 48px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: var(--border);
+      max-width: 80px;
+    }
+
+    /* ─── FEATURES ───────────────────────────────── */
+    .features { border-top: 1px solid var(--border); }
+
+    .feature-list { display: flex; flex-direction: column; gap: 0; }
+
+    .feature-item {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+      padding: 44px 0;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.2s;
+    }
+
+    .feature-item:first-child { border-top: 1px solid var(--border); }
+
+    .feature-num {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      font-family: monospace;
+      padding-top: 4px;
+    }
+
+    .feature-title {
+      font-size: 20px; font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .feature-tag {
+      display: inline-block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 4px;
+      background: rgba(99,102,241,0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(99,102,241,0.2);
+      margin-bottom: 16px;
+    }
+
+    .feature-desc {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      max-width: 340px;
+    }
+
+    .feature-detail {
+      padding: 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .feature-detail-line {
+      display: flex; gap: 10px; margin: 4px 0;
+    }
+
+    .fdl-key { color: var(--accent2); min-width: 110px; }
+    .fdl-val { color: var(--text); }
+    .fdl-comment { color: var(--muted); opacity: 0.6; }
+
+    /* ─── PIPELINE ───────────────────────────────── */
+    .pipeline { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .pipeline-steps {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      position: relative;
+    }
+
+    .pipeline-step {
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+    }
+
+    .pipeline-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: -1px; top: 50%;
+      transform: translateY(-50%);
+      height: 40px; width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--border), transparent);
+    }
+
+    .pipeline-arrow {
+      position: absolute;
+      right: -9px; top: 50%;
+      transform: translateY(-50%);
+      width: 18px; height: 18px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; color: var(--muted);
+      z-index: 1;
+    }
+
+    .ps-icon {
+      width: 40px; height: 40px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 18px;
+    }
+
+    .ps-name {
+      font-size: 12px; font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .ps-detail { font-size: 11px; color: var(--muted); }
+
+    /* ─── PRICING ────────────────────────────────── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .plan {
+      padding: 32px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--bg2);
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .plan:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+    .plan-popular {
+      border-color: rgba(99,102,241,0.4);
+    }
+
+    .plan-popular:hover { border-color: var(--accent); }
+
+    .plan-badge {
+      position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 14px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+    }
+
+    .plan-name {
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .plan-price {
+      font-size: 42px; font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .plan-price sup {
+      font-size: 18px;
+      vertical-align: top;
+      margin-top: 8px;
+    }
+
+    .plan-period {
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .plan-divider {
+      height: 1px; background: var(--border);
+      margin-bottom: 24px;
+    }
+
+    .plan-features { list-style: none; margin-bottom: 28px; }
+
+    .plan-features li {
+      font-size: 13px; color: var(--muted);
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .plan-features li:last-child { border-bottom: none; }
+
+    .pf-check { color: var(--green); font-size: 14px; flex-shrink: 0; }
+    .pf-dash  { color: var(--border2); font-size: 18px; line-height: 1; flex-shrink: 0; }
+
+    .plan-features .highlight { color: var(--text); }
+
+    /* ─── STATS ──────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .stat-item {
+      padding: 36px 32px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+
+    .stat-num {
+      font-size: 48px; font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label { font-size: 13px; color: var(--muted); }
+
+    /* ─── FOOTER ─────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .footer-links {
+      display: flex; gap: 28px; list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 12px; color: var(--muted);
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-copy { font-size: 12px; color: var(--muted); }
+
+    /* ─── REVEAL ANIMATIONS ──────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* ─── RESPONSIVE ─────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+      .hero-heading { font-size: 38px; }
+      .feature-item { grid-template-columns: 60px 1fr; }
+      .feature-detail { display: none; }
+      .pipeline-steps { grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+      .pipeline-step { background: var(--bg2); }
+      .pipeline-step::after { display: none; }
+      .pipeline-arrow { display: none; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+      .stats-row { grid-template-columns: 1fr; }
+      .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+      .stat-item:last-child { border-bottom: none; }
+      .nav-links { display: none; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ─────────────────────────────────────── -->
+<nav>
+  <div class="container nav-inner">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm9 2.5a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0z"/>
+        </svg>
+      </div>
+      VdoGen
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+    </ul>
+
+    <div class="nav-cta" id="nav-cta">
+      <!-- Swapped by JS based on auth state -->
+      <a href="/log-in" class="btn btn-ghost" id="nav-login">Log in</a>
+      <a href="/sign-up" class="btn btn-primary" id="nav-signup">Get started</a>
+    </div>
+  </div>
+</nav>
+
+
+<!-- ─── HERO ─────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-grid">
+
+      <div>
+        <div class="hero-eyebrow">AI · Manim · Kubernetes</div>
+        <h1 class="hero-heading">
+          Math concepts,<br/>
+          turned into<br/>
+          <em>video</em> instantly.
+        </h1>
+        <p class="hero-sub">
+          Type what you want to explain. VdoGen writes the animation code,
+          renders it on a Kubernetes cluster, and gives you a video in seconds —
+          no Python, no FFmpeg, no setup.
+        </p>
+        <div class="hero-actions" id="hero-actions">
+          <a href="/sign-up" class="btn btn-primary btn-lg" id="hero-cta-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Start for free
+          </a>
+          <a href="#how-it-works" class="btn btn-ghost btn-lg">See how it works</a>
+        </div>
+      </div>
+
+      <div class="terminal reveal">
+        <div class="terminal-bar">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+          <span class="terminal-title">vdogen — prompt</span>
+        </div>
+        <div class="terminal-body">
+          <div class="t-prompt">
+            <span class="t-prompt-sym">›</span>
+            <span class="t-input" id="typewriter"></span><span class="t-cursor"></span>
+          </div>
+          <div class="t-output" id="t-output" style="display:none">
+            <div class="t-line"><span class="t-label">provider</span><span class="t-val-violet">deepseek-v4</span></div>
+            <div class="t-line"><span class="t-label">generated</span><span class="t-val-white">fourier_series.py</span><span class="fdl-comment" style="margin-left:8px">· 84 lines</span></div>
+            <div class="t-line"><span class="t-label">k8s job</span><span class="t-val-white">script-runner-7f2c</span></div>
+            <div class="t-line"><span class="t-label">render</span><span class="t-val-green">▮▮▮▮▮▮▮▮▮▮ 100%</span></div>
+            <div class="t-line"><span class="t-label">upload</span><span class="t-val-green">→ GCS / HLS</span></div>
+            <div class="t-result">✓ video ready · 1080p · 12.4s · AES-128 encrypted</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── TICKER ────────────────────────────────────── -->
+<div class="ticker-wrap">
+  <div class="ticker-track">
+    <!-- duplicated for seamless loop -->
+    <span class="ticker-item">visualize Fourier series decomposition</span>
+    <span class="ticker-item">animate the Pythagorean theorem</span>
+    <span class="ticker-item">show how gradient descent converges</span>
+    <span class="ticker-item">draw a proof of the chain rule</span>
+    <span class="ticker-item">animate Euler's identity e^(iπ) + 1 = 0</span>
+    <span class="ticker-item">visualize matrix multiplication step by step</span>
+    <span class="ticker-item">show a binary search tree insertion</span>
+    <span class="ticker-item">animate Bezier curve construction</span>
+    <span class="ticker-item">draw Newton's method converging to a root</span>
+    <span class="ticker-item">visualize Fourier series decomposition</span>
+    <span class="ticker-item">animate the Pythagorean theorem</span>
+    <span class="ticker-item">show how gradient descent converges</span>
+    <span class="ticker-item">draw a proof of the chain rule</span>
+    <span class="ticker-item">animate Euler's identity e^(iπ) + 1 = 0</span>
+    <span class="ticker-item">visualize matrix multiplication step by step</span>
+    <span class="ticker-item">show a binary search tree insertion</span>
+    <span class="ticker-item">animate Bezier curve construction</span>
+    <span class="ticker-item">draw Newton's method converging to a root</span>
+  </div>
+</div>
+
+
+<!-- ─── FEATURES ──────────────────────────────────── -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <div class="feature-list">
+
+      <div class="feature-item reveal">
+        <div class="feature-num">01</div>
+        <div>
+          <div class="feature-tag">AI Engine</div>
+          <div class="feature-title">Prompt to code<br/>in one step</div>
+          <p class="feature-desc">
+            Write in plain English. The AI translates your intent into a complete,
+            runnable Manim Python script — handling animation timing, color, transforms,
+            and math rendering automatically.
+          </p>
+        </div>
+        <div class="feature-detail">
+          <div class="feature-detail-line">
+            <span class="fdl-key">model</span>
+            <span class="fdl-val">deepseek-v4-pro</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">context</span>
+            <span class="fdl-val">last 5 messages</span>
+            <span class="fdl-comment"> + prev code</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">self-correct</span>
+            <span class="fdl-val">3 retry attempts</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">output</span>
+            <span class="fdl-val">Manim CE .py</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-item reveal reveal-delay-1">
+        <div class="feature-num">02</div>
+        <div>
+          <div class="feature-tag">Infrastructure</div>
+          <div class="feature-title">Ephemeral pods,<br/>zero queue wait</div>
+          <p class="feature-desc">
+            Every render runs in its own Kubernetes Job — isolated, parallel,
+            and automatically cleaned up. No shared environment, no render queue.
+            Your job starts the moment you submit.
+          </p>
+        </div>
+        <div class="feature-detail">
+          <div class="feature-detail-line">
+            <span class="fdl-key">runtime</span>
+            <span class="fdl-val">K8s Job per video</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">concurrency</span>
+            <span class="fdl-val">unlimited</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">ttl</span>
+            <span class="fdl-val">3600s post-render</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">storage</span>
+            <span class="fdl-val">GCS · HLS · AES-128</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-item reveal reveal-delay-2">
+        <div class="feature-num">03</div>
+        <div>
+          <div class="feature-tag">Editor</div>
+          <div class="feature-title">Clip editor with<br/>drag &amp; drop timeline</div>
+          <p class="feature-desc">
+            Arrange, trim, and sequence your generated clips on a visual timeline.
+            Export the final cut as a single MP4 — stitched server-side via FFmpeg,
+            delivered over HLS.
+          </p>
+        </div>
+        <div class="feature-detail">
+          <div class="feature-detail-line">
+            <span class="fdl-key">dnd</span>
+            <span class="fdl-val">@dnd-kit/sortable</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">stitch</span>
+            <span class="fdl-val">FFmpeg server-side</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">export</span>
+            <span class="fdl-val">MP4 · 1080p / 720p</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">stream</span>
+            <span class="fdl-val">HLS signed URL</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-item reveal reveal-delay-3">
+        <div class="feature-num">04</div>
+        <div>
+          <div class="feature-tag">Conversation</div>
+          <div class="feature-title">Iterate with<br/>context</div>
+          <p class="feature-desc">
+            Each prompt remembers your previous animations and their code.
+            Refine, extend, or completely rework any clip in the same conversation —
+            the AI knows exactly what it built before.
+          </p>
+        </div>
+        <div class="feature-detail">
+          <div class="feature-detail-line">
+            <span class="fdl-key">history</span>
+            <span class="fdl-val">per conversation</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">context</span>
+            <span class="fdl-val">code + error logs</span>
+          </div>
+          <div class="feature-detail-line">
+            <span class="fdl-key">retry</span>
+            <span class="fdl-val">sends manim errors</span>
+            <span class="fdl-comment"> to LLM</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── PIPELINE / HOW IT WORKS ───────────────────── -->
+<section class="pipeline" id="how-it-works">
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <div class="pipeline-steps">
+      <div class="pipeline-step reveal">
+        <div class="ps-icon">✍️</div>
+        <div class="ps-name">Write prompt</div>
+        <div class="ps-detail">Plain English description of what to animate</div>
+        <div class="pipeline-arrow">›</div>
+      </div>
+      <div class="pipeline-step reveal reveal-delay-1">
+        <div class="ps-icon">🤖</div>
+        <div class="ps-name">AI generates code</div>
+        <div class="ps-detail">Claude / DeepSeek writes the Manim Python script</div>
+        <div class="pipeline-arrow">›</div>
+      </div>
+      <div class="pipeline-step reveal reveal-delay-2">
+        <div class="ps-icon">☸️</div>
+        <div class="ps-name">K8s renders</div>
+        <div class="ps-detail">Isolated Kubernetes Job runs the script in a Manim container</div>
+        <div class="pipeline-arrow">›</div>
+      </div>
+      <div class="pipeline-step reveal reveal-delay-3">
+        <div class="ps-icon">☁️</div>
+        <div class="ps-name">Uploaded to GCS</div>
+        <div class="ps-detail">HLS segments encrypted with AES-128, stored in Cloud Storage</div>
+        <div class="pipeline-arrow">›</div>
+      </div>
+      <div class="pipeline-step reveal reveal-delay-3">
+        <div class="ps-icon">▶️</div>
+        <div class="ps-name">Stream or download</div>
+        <div class="ps-detail">Watch instantly or export as MP4</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── STATS ─────────────────────────────────────── -->
+<section style="padding: 72px 0;">
+  <div class="container">
+    <div class="stats-row reveal">
+      <div class="stat-item">
+        <div class="stat-num" style="color:var(--accent2)">~12s</div>
+        <div class="stat-label">Average render time</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:var(--green)">3 free</div>
+        <div class="stat-label">Videos on the free plan</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" style="color:var(--violet)">1080p</div>
+        <div class="stat-label">Maximum export resolution</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── PRICING ───────────────────────────────────── -->
+<section style="padding: 80px 0; border-top: 1px solid var(--border);" id="pricing">
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <div class="pricing-grid">
+
+      <div class="plan reveal">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">₹0</div>
+        <div class="plan-period">forever</div>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="pf-check">✓</span> <span class="highlight">3 video generations</span></li>
+          <li><span class="pf-check">✓</span> Up to 720p resolution</li>
+          <li><span class="pf-check">✓</span> Video editor access</li>
+          <li><span class="pf-dash">–</span> Unlimited generations</li>
+          <li><span class="pf-dash">–</span> Priority rendering</li>
+        </ul>
+        <a href="/sign-up" class="btn btn-ghost btn-lg" style="width:100%;justify-content:center;">Get started</a>
+      </div>
+
+      <div class="plan plan-popular reveal reveal-delay-1">
+        <div class="plan-badge">Most popular</div>
+        <div class="plan-name">Prime</div>
+        <div class="plan-price"><sup>₹</sup>999</div>
+        <div class="plan-period">per month &nbsp;·&nbsp; save 20% at 3 months</div>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="pf-check">✓</span> <span class="highlight">Unlimited generations</span></li>
+          <li><span class="pf-check">✓</span> <span class="highlight">Up to 1080p resolution</span></li>
+          <li><span class="pf-check">✓</span> Priority K8s rendering</li>
+          <li><span class="pf-check">✓</span> Video editor + export</li>
+          <li><span class="pf-check">✓</span> All aspect ratios & FPS</li>
+        </ul>
+        <a href="/sign-up" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Start Prime</a>
+      </div>
+
+      <div class="plan reveal reveal-delay-2">
+        <div class="plan-name">Prime · Annual</div>
+        <div class="plan-price"><sup>₹</sup>7,776</div>
+        <div class="plan-period">per year &nbsp;·&nbsp; save 35%</div>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="pf-check">✓</span> <span class="highlight">Everything in Prime</span></li>
+          <li><span class="pf-check">✓</span> <span class="highlight">35% off vs monthly</span></li>
+          <li><span class="pf-check">✓</span> ₹648 / month equivalent</li>
+          <li><span class="pf-check">✓</span> Priority K8s rendering</li>
+          <li><span class="pf-check">✓</span> All features included</li>
+        </ul>
+        <a href="/sign-up" class="btn btn-ghost btn-lg" style="width:100%;justify-content:center;">Get annual</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── FOOTER ────────────────────────────────────── -->
+<footer>
+  <div class="container footer-inner">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 2h5v5H2zm7 0h5v5H9zM2 9h5v5H2zm9 2.5a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0z"/>
+        </svg>
+      </div>
+      VdoGen
+    </a>
+    <ul class="footer-links">
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">Docs</a></li>
+      <li><a href="#">Support</a></li>
+    </ul>
+    <span class="footer-copy">© 2025 VdoGen</span>
+  </div>
+</footer>
+
+
+<script>
+  // ─── AUTH CHECK ────────────────────────────────
+  // Swap CTAs if already logged in
+  (async () => {
+    try {
+      const res = await fetch('https://api.vdogen.prasadev.com/auth/me', {
+        credentials: 'include',
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          // Nav
+          const navLogin  = document.getElementById('nav-login');
+          const navSignup = document.getElementById('nav-signup');
+          if (navLogin)  navLogin.style.display  = 'none';
+          if (navSignup) {
+            navSignup.textContent = 'Dashboard';
+            navSignup.href = '/chat';
+          }
+          // Hero
+          const heroPrimary = document.getElementById('hero-cta-primary');
+          if (heroPrimary) {
+            heroPrimary.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>Open Dashboard`;
+            heroPrimary.href = '/chat';
+          }
+        }
+      }
+    } catch (_) {
+      // Not logged in or network error — show default (logged-out) state
+    }
+  })();
+
+  // ─── TYPEWRITER ────────────────────────────────
+  const prompts = [
+    'visualize Fourier series decomposition',
+    'animate Euler\'s identity step by step',
+    'show how gradient descent finds a minimum',
+    'draw the Pythagorean theorem proof',
+    'animate a binary search tree insertion',
+  ];
+
+  let pIdx = 0, cIdx = 0, deleting = false;
+  const el = document.getElementById('typewriter');
+  const out = document.getElementById('t-output');
+
+  function type() {
+    const text = prompts[pIdx];
+    if (!deleting) {
+      el.textContent = text.slice(0, ++cIdx);
+      if (cIdx === text.length) {
+        if (out) out.style.display = 'block';
+        setTimeout(() => { deleting = true; type(); }, 2800);
+        return;
+      }
+    } else {
+      el.textContent = text.slice(0, --cIdx);
+      if (cIdx === 0) {
+        deleting = false;
+        pIdx = (pIdx + 1) % prompts.length;
+        if (out) out.style.display = 'none';
+      }
+    }
+    setTimeout(type, deleting ? 22 : 48);
+  }
+
+  setTimeout(type, 800);
+
+  // ─── SCROLL REVEAL ─────────────────────────────
+  const revealEls = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  revealEls.forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
