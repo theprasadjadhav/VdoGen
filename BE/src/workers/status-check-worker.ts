@@ -348,6 +348,26 @@ informer.on("delete", job => {
     });
 });
 
+let reconnecting = false;
+
+async function reconnect(reason: string) {
+    if (reconnecting) return;          // prevent double-reconnect if both handlers fire
+    reconnecting = true;
+
+    logger.warn({ msg: "[StatusWorker] Watch closed, reconnecting in 5s", reason });
+    await new Promise(r => setTimeout(r, 5000));
+
+    try {
+        await informer.start();
+        logger.info({ msg: "[StatusWorker] Informer reconnected" });
+    } catch (err) {
+        // reconnect itself failed — NOW it's unrecoverable
+        process.exit(1);
+    } finally {
+        reconnecting = false;
+    }
+}
+
 informer.on("error", (err: Error) => reconnect(err.message));
 
 await informer.start();
@@ -357,33 +377,11 @@ logger.info({
     namespace: namespace,
 });
 
+process.on('unhandledRejection', (reason) => {
+    reconnect(reason instanceof Error ? reason.message : String(reason));
+});
 
-let reconnecting = false;
-
-  async function reconnect(reason: string) {
-      if (reconnecting) return;          // prevent double-reconnect if both handlers fire
-      reconnecting = true;
-
-      logger.warn({ msg: "[StatusWorker] Watch closed, reconnecting in 5s", reason });
-      await new Promise(r => setTimeout(r, 5000));
-
-      try {
-          await informer.start();
-          logger.info({ msg: "[StatusWorker] Informer reconnected" });
-      } catch (err) {
-          // reconnect itself failed — NOW it's unrecoverable
-          process.exit(1);
-      } finally {
-          reconnecting = false;
-      }
-  }
-
-
-  process.on('unhandledRejection', (reason) => {
-      reconnect(reason instanceof Error ? reason.message : String(reason));
-  });
-
-  process.on('uncaughtException', (error: Error) => {
-      logger.error({ msg: "[StatusWorker] Uncaught exception, exiting", error: error.message });
-      process.exit(1);
-  });
+process.on('uncaughtException', (error: Error) => {
+    logger.error({ msg: "[StatusWorker] Uncaught exception, exiting", error: error.message });
+    process.exit(1);
+});
