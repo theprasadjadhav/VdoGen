@@ -3,13 +3,18 @@ import { ActiveConversationProvider } from './hooks/use-active-conversation'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
 import { Project } from "./app/dashboard/project-page"
 import { Toaster } from "sonner"
-import Home from './app/dashboard/home-page'
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './hooks/use-Auth';
 import Chat from './app/dashboard/chat-page'
 import Auth from './app/dashboard/auth-page'
+import { useEffect } from 'react'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+function LandingRedirect() {
+  useEffect(() => { window.location.replace('/') }, [])
+  return null
+}
 
 function AppContentNew() {
 
@@ -29,18 +34,16 @@ function AppContentNew() {
         {user ?
           <ActiveConversationProvider>
             <Routes>
-              <Route path="/" element={<Home />} />
               <Route path="/chat" element={<Chat />} />
               <Route path='/editor' element={<Project />} />
-              <Route path="*" element={<Navigate replace to="/" />} />
+              <Route path="*" element={<Navigate replace to="/chat" />} />
             </Routes>
           </ActiveConversationProvider>
           :
           <Routes>
-            <Route path="/" element={<Home />} />
             <Route path="/log-in" element={<Auth mode='login' />} />
             <Route path="/sign-up" element={<Auth mode='signup' />} />
-            <Route path="*" element={<Navigate replace to="/" />} />
+            <Route path="*" element={<LandingRedirect />} />
           </Routes>
         }
       </BrowserRouter>
