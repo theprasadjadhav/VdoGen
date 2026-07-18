@@ -348,6 +348,7 @@ informer.on("delete", job => {
     });
 });
 
+informer.on("error", (err: Error) => reconnect(err.message));
 
 await informer.start();
 
@@ -377,7 +378,6 @@ let reconnecting = false;
       }
   }
 
-  informer.on("error", (err: Error) => reconnect(err.message));
 
   process.on('unhandledRejection', (reason) => {
       reconnect(reason instanceof Error ? reason.message : String(reason));
@@ -387,12 +387,3 @@ let reconnecting = false;
       logger.error({ msg: "[StatusWorker] Uncaught exception, exiting", error: error.message });
       process.exit(1);
   });
-
-
-process.on('uncaughtException', (error) => {
-    logger.error({
-        msg: "[StatusWorker] Uncaught exception",
-        error: error.message,
-        stack: error.stack
-    });
-});
