@@ -345,7 +345,7 @@ authRouter.get("/identities", authMiddleware, async (req, res) => {
     }
 })
 
-authRouter.post("/change-password", authMiddleware, async (req, res) => {
+authRouter.post("/change-password", authLimiter, authMiddleware, async (req, res) => {
     const userId = req.user?.id;
     const { currentPassword, newPassword, confirmPassword } = req.body;
 

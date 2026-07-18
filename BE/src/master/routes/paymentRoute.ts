@@ -183,7 +183,7 @@ paymentRoute.use(express.json())
 
 paymentRoute.use(authMiddleware)
 
-paymentRoute.post("/status", async (req, res) => {
+paymentRoute.post("/status", paymentLimiter , async (req, res) => {
 
     const { payment_id } = req.query
 

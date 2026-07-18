@@ -9,14 +9,14 @@ function createRateLimiter(options: {
     message: string;
 }) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const key = `rl:${options.keyFn(req)}`;
-        const count = await redis.incr(key);
-        if (count === 1) await redis.expire(key, options.windowSec);
-        if (count > options.limit) {
-            sendError(res, 429, options.message);
-            return;
-        }
-        next();
+        const key = `rl:${options.keyFn(req)}`;                                                                                                                
+        await redis.set(key, '0', 'EX', options.windowSec, 'NX'); // create with TTL only if not exists                                                        
+        const count = await redis.incr(key);                                                                                                                   
+        if (count > options.limit) {                                                                                                                           
+            sendError(res, 429, options.message);                                                                                                              
+            return;                                                                                                                                            
+        }       
+        next();  
     };
 }
 
@@ -43,7 +43,7 @@ export const paymentLimiter = createRateLimiter({
 
 export const globalLimiter = createRateLimiter({
     keyFn: (req) => `global:${req.ip}`,
-    limit: 100,
+    limit: 200,
     windowSec: 60,    // 1 min
     message: "Too many requests, try again later",
 });     
