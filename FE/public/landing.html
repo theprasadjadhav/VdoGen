@@ -409,11 +409,11 @@
     /* ── PRICING ── */
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 18px;
       align-items: stretch;
     }
-    @media (max-width: 1024px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1100px) { .pricing-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 640px)  { .pricing-grid { grid-template-columns: 1fr; } }
 
     .pricing-card {
@@ -622,8 +622,7 @@
     <!-- Logged-out state (default) -->
     <div class="nav-actions" id="nav-logged-out">
       <a href="/log-in" class="btn btn-outline">Log in</a>
-      <a href="/sign-up"
-         class="btn btn-primary">Get started</a>
+      <a href="/sign-up" class="btn btn-primary">Get started</a>
     </div>
 
     <!-- Logged-in state (hidden until auth check) -->
@@ -673,8 +672,7 @@
           </p>
 
           <div class="hero-cta" id="hero-cta">
-            <a href="sign-up"
-               class="btn btn-primary">Get started free</a>
+            <a href="/sign-up" class="btn btn-primary">Get started free</a>
           </div>
 
           
@@ -877,10 +875,9 @@
           <a href="/sign-up" class="plan-cta plan-cta-outline">Get Started Free</a>
         </div>
 
-        <!-- Prime (most popular) -->
-        <div class="pricing-card popular">
-          <div class="popular-badge">Most Popular</div>
-          <p class="plan-name">Prime</p>
+        <!-- 1 Month -->
+        <div class="pricing-card">
+          <p class="plan-name">1 Month</p>
           <div class="plan-price">
             <span class="currency">₹</span>
             <span class="amount">999</span>
@@ -906,18 +903,54 @@
               HD video export
             </li>
           </ul>
+          <a href="/sign-up" class="plan-cta plan-cta-outline">Get Prime</a>
+        </div>
+
+        <!-- 3 Months (most popular) -->
+        <div class="pricing-card popular">
+          <div class="popular-badge">Most Popular</div>
+          <p class="plan-name">3 Months</p>
+          <div class="plan-price">
+            <span class="currency">₹</span>
+            <span class="amount">799.20</span>
+            <span class="period">/mo</span>
+          </div>
+          <p class="plan-sub"><span class="save-tag">Save 20%</span> &nbsp;₹2,397.60 billed every 3 months</p>
+          <div class="plan-divider"></div>
+          <ul class="plan-features">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feat-check" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Unlimited video generations
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feat-check" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              High-quality video output
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feat-check" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Advanced editing tools
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feat-check" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              HD video export
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feat-check" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              20% off vs monthly
+            </li>
+          </ul>
           <a href="/sign-up" class="plan-cta plan-cta-primary">Get Prime</a>
         </div>
 
-        <!-- Prime Annual -->
+        <!-- 12 Months -->
         <div class="pricing-card">
-          <p class="plan-name">Prime Annual</p>
+          <p class="plan-name">12 Months</p>
           <div class="plan-price">
             <span class="currency">₹</span>
-            <span class="amount">648</span>
+            <span class="amount">649.35</span>
             <span class="period">/mo</span>
           </div>
-          <p class="plan-sub"><span class="save-tag">Save 35%</span> &nbsp;₹7,776 billed yearly</p>
+          <p class="plan-sub"><span class="save-tag">Save 35%</span> &nbsp;₹7,792.20 billed yearly</p>
           <div class="plan-divider"></div>
           <ul class="plan-features">
             <li>
@@ -1015,7 +1048,7 @@ const BACKEND = 'https://api.vdogen.prasadev.com';
   try {
     const signal = typeof AbortSignal.timeout === 'function'
       ? AbortSignal.timeout(3000) : undefined;
-    const res = await fetch(BACKEND + '/v1/auth/me', {
+    const res = await fetch(BACKEND + '/auth/me', {
       credentials: 'include',
       ...(signal && { signal }),
     });

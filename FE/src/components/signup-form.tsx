@@ -31,7 +31,6 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false)
 
-
     const form = useForm<SignupValuesType>({
         resolver: zodResolver(signupSchema),
         defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
@@ -39,13 +38,10 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     });
 
     const onSubmit = async (values: SignupValuesType) => {
-
         try {
             setLoading(true)
-            const res = await baseAxios.post(`/auth/signup`,
-                { ...values }
-            );
-           
+            const res = await baseAxios.post(`/auth/signup`, { ...values });
+
             if (res.data?.success && res.data?.user) {
                 setUser(res.data.user);
                 toast.success(res.data.message || "Account created successfully.");
@@ -55,12 +51,8 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             }
 
         } catch (error) {
-
-            if (error && error instanceof Error) {
-                toast.error(error.message);
-            } else {
-                toast.error("An unexpected error occurred while signing up.");
-            }
+            if (error && error instanceof Error) toast.error(error.message);
+            else toast.error("An unexpected error occurred while signing up.");
         } finally {
             setLoading(false)
         }
@@ -69,16 +61,22 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     return (
         <Form {...form}>
             <form className="space-y-3" onSubmit={form.handleSubmit(onSubmit)}>
+
                 <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Full name</FormLabel>
+                            <FormLabel className="text-[#e4e4f0] text-sm font-medium">Full name</FormLabel>
                             <FormControl>
-                                <Input placeholder="Alex Rivera" autoComplete="name" {...field} />
+                                <Input
+                                    placeholder="Alex Rivera"
+                                    autoComplete="name"
+                                    className="bg-[#111118] border-white/10 text-[#e4e4f0] placeholder:text-[#3d3950] focus-visible:ring-1 focus-visible:ring-[#6366f1]/40 focus-visible:border-[#6366f1]/60"
+                                    {...field}
+                                />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                         </FormItem>
                     )}
                 />
@@ -88,16 +86,17 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel className="text-[#e4e4f0] text-sm font-medium">Email</FormLabel>
                             <FormControl>
                                 <Input
                                     type="email"
                                     placeholder="you@studio.com"
                                     autoComplete="email"
+                                    className="bg-[#111118] border-white/10 text-[#e4e4f0] placeholder:text-[#3d3950] focus-visible:ring-1 focus-visible:ring-[#6366f1]/40 focus-visible:border-[#6366f1]/60"
                                     {...field}
                                 />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                         </FormItem>
                     )}
                 />
@@ -107,19 +106,20 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                     name="password"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Password</FormLabel>
+                            <FormLabel className="text-[#e4e4f0] text-sm font-medium">Password</FormLabel>
                             <FormControl>
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
                                     autoComplete="new-password"
+                                    className="bg-[#111118] border-white/10 text-[#e4e4f0] placeholder:text-[#3d3950] focus-visible:ring-1 focus-visible:ring-[#6366f1]/40 focus-visible:border-[#6366f1]/60"
                                     {...field}
                                 />
                             </FormControl>
-                            <FormDescription className="text-slate-400">
+                            <FormDescription className="text-[#64648a] text-xs">
                                 Use at least 8 characters with numbers & symbols.
                             </FormDescription>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                         </FormItem>
                     )}
                 />
@@ -129,53 +129,55 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                     name="confirmPassword"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Re-enter password</FormLabel>
+                            <FormLabel className="text-[#e4e4f0] text-sm font-medium">Re-enter password</FormLabel>
                             <FormControl>
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
                                     autoComplete="new-password"
+                                    className="bg-[#111118] border-white/10 text-[#e4e4f0] placeholder:text-[#3d3950] focus-visible:ring-1 focus-visible:ring-[#6366f1]/40 focus-visible:border-[#6366f1]/60"
                                     {...field}
                                 />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-red-400" />
                         </FormItem>
                     )}
                 />
 
-                <div className="flex items-center justify-between text-sm text-slate-400">
+                <div className="flex items-center justify-between text-sm text-[#64648a]">
                     <span>Already a member?</span>
-                    <Button
+                    <button
                         type="button"
-                        variant="link"
-                        className="p-0 text-emerald-300 hover:text-emerald-200"
+                        className="text-[#818cf8] hover:text-[#a78bfa] text-sm font-medium transition-colors cursor-pointer bg-transparent border-none p-0"
                         onClick={onSwitchToLogin}
                     >
                         Log in
-                    </Button>
+                    </button>
                 </div>
-                <div className="flex justify-center gap-2">
-                    <Button
+
+                <div className="flex justify-center gap-2 pt-1">
+                    <button
                         onClick={() => window.history.back()}
                         type="button"
-                        className="w-1/2"
-                        variant="outline"
+                        className="w-1/2 h-9 rounded-[10px] border border-white/10 text-[#64648a] text-sm font-medium bg-transparent hover:bg-white/[0.04] hover:text-[#e4e4f0] transition-all cursor-pointer"
                         disabled={form.formState.isSubmitting}
                     >
                         Back
-                    </Button>
+                    </button>
                     <Button
                         type="submit"
-                        className="w-1/2"
+                        className="w-1/2 bg-[#6366f1] text-white font-semibold hover:bg-[#5558e8] border-transparent rounded-[10px] transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.35)]"
                         disabled={form.formState.isSubmitting}
                     >
-                        {loading ? <Spinner /> :
-                            "Create account"
-                        }
+                        {loading ? <Spinner /> : "Create account"}
                     </Button>
                 </div>
-                <p className="text-center text-xs text-slate-500">
-                    By continuing you agree to our Terms and Privacy Policy.
+
+                <p className="text-center text-xs text-[#46424e] pt-1">
+                    By continuing you agree to our{' '}
+                    <a href="/terms" className="text-[#818cf8] hover:underline">Terms</a>
+                    {' '}and{' '}
+                    <a href="/privacy" className="text-[#818cf8] hover:underline">Privacy Policy</a>.
                 </p>
             </form>
         </Form>

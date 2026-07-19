@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
     Dialog,
@@ -9,7 +8,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "./ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { useAuth } from "@/hooks/use-Auth";
 import { baseAxios } from "@/lib/axios";
 import { IconCrown, IconCheck } from "@tabler/icons-react";
@@ -67,7 +65,7 @@ const PRIME_PLAN_FEATURES = [
 export function PlanDialog({ open, setOpen }: PlanDialogProps) {
     const { user, setUser } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [selectedDuration, setSelectedDuration] = useState<PlanDuration>("ONEYEAR");
+    const [selectedDuration, setSelectedDuration] = useState<PlanDuration>("THREEMONTH");
     const [isStatusOpen, setIsStatusOpen] = useState(false)
     const [status, setStatus] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
@@ -186,139 +184,121 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
     return (
         <>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="!max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto border border-zinc-300 dark:border-slate-800 bg-white/95 dark:bg-black/70 backdrop-blur">
-                    <DialogHeader className="text-center pb-2">
-                        <DialogTitle className="text-lg xs:text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-slate-50">
+                <DialogContent className="!max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0d0d0d] border border-white/[0.08] shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+                    <DialogHeader className="text-center pb-4">
+                        <DialogTitle className="text-xl sm:text-2xl font-semibold text-[#e4e4f0]">
                             Upgrade to Prime
                         </DialogTitle>
-                        <DialogDescription className="text-xs xs:text-sm sm:text-base text-zinc-600 dark:text-slate-400">
+                        <DialogDescription className="text-sm text-[#64648a]">
                             Unlock unlimited video generation and premium features
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-1">
-                        {/* Prime Plan */}
-                        <div className="max-w-2xl mx-auto w-full  rounded-xl bg-gradient-to-br from-zinc-100 via-zinc-50 to-white dark:from-slate-900 dark:via-slate-950 dark:to-slate-950/80 shadow-lg px-3 xs:px-6 py-4 xs:py-6 flex flex-col items-center sm:flex-row gap-5 xs:gap-7 md:gap-12 sm:items-start border border-zinc-200 dark:border-slate-800">
-                            <div className="flex-1 flex flex-col min-w-[160px] xs:min-w-[230px]">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400/15 dark:bg-yellow-500/15">
-                                        <IconCrown className="h-4 w-4 xs:h-5 xs:w-5 text-yellow-600 dark:text-yellow-400" />
-                                    </span>
-                                    <span className="text-lg xs:text-2xl font-bold text-zinc-900 dark:text-slate-50 tracking-tight">
-                                        Prime Plan
-                                    </span>
-                                </div>
-                                <div className="text-zinc-700 dark:text-slate-400 text-sm xs:text-base font-medium mb-3">
-                                    Everything you need for <span className="text-emerald-600 dark:text-emerald-400">unlimited creativity</span>
-                                </div>
-                                <div className="mt-auto">
-                                    <span className="text-3xl xs:text-4xl md:text-5xl font-bold text-zinc-900 dark:text-slate-50 leading-none drop-shadow">
-                                        {currencyBasePriceMap[currency].sign}{planDetails[selectedDuration].monthlyPrice.toFixed(2)}
-                                    </span>
-                                    <span className="text-xs xs:text-sm text-zinc-600 dark:text-slate-400 mb-[2px]">/month</span>
-                                </div>
-                            </div>
-                            <div className="flex-1 min-w-[160px] xs:min-w-[230px] gap-3">
-                                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 mb-2">
-                                    {PRIME_PLAN_FEATURES.map((feature, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center gap-2 p-2 rounded-md bg-zinc-100 dark:bg-slate-800/50 border border-zinc-200 dark:border-slate-700/60 shadow-sm"
-                                        >
-                                            <IconCheck className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                                            <span className="text-xs sm:text-sm text-zinc-800 dark:text-slate-200">{feature}</span>
-                                        </div>
-                                    ))}
-                                </div>
+                    <div className="py-2">
+                        {/* Plan cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                            {Object.entries(planDetails).map(([planKey, plan]) => {
+                                const isSelected = selectedDuration === planKey;
+                                const isPopular = planKey === "THREEMONTH";
 
-                            </div>
+                                return (
+                                    <div
+                                        key={planKey}
+                                        onClick={() => !isPrime && setSelectedDuration(planKey as PlanDuration)}
+                                        className={`relative rounded-xl border p-6 transition-all flex flex-col ${
+                                            isPrime ? "cursor-default" : "cursor-pointer"
+                                        } ${
+                                            isSelected && !isPrime
+                                                ? "border-[#6366f1] shadow-[0_0_0_1px_rgba(99,102,241,0.12),0_8px_32px_rgba(99,102,241,0.08)] bg-[#111111]"
+                                                : "border-white/[0.08] bg-[#111111] hover:border-white/[0.15]"
+                                        }`}
+                                    >
+                                        {/* Most Popular badge */}
+                                        {isPopular && (
+                                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-[#6366f1] to-[#a78bfa] text-white whitespace-nowrap">
+                                                Most Popular
+                                            </div>
+                                        )}
+
+                                        {/* Plan name row with save badge */}
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className={`text-xs font-semibold uppercase tracking-widest ${isSelected && !isPrime ? "text-[#a78bfa]" : "text-[#64648a]"}`}>
+                                                {plan.name}
+                                            </p>
+                                            {plan.discount > 0 && (
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-400/10 text-emerald-400">
+                                                    Save {plan.discount * 100}%
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Price */}
+                                        <div className="flex items-baseline gap-0.5 mb-1">
+                                            <span className="text-base text-[#e4e4f0]">{currencyBasePriceMap[currency].sign}</span>
+                                            <span className="text-4xl font-bold text-[#e4e4f0] leading-none tracking-tight">{plan.monthlyPrice.toFixed(2)}</span>
+                                            <span className="text-sm text-[#64648a] ml-1">/mo</span>
+                                        </div>
+
+                                        {/* Billing sub */}
+                                        <p className="text-xs text-[#64648a] mb-5 min-h-[1.25rem]">
+                                            {planKey === "ONEMONTH"
+                                                ? "Billed monthly"
+                                                : `${currencyBasePriceMap[currency].sign}${plan.price.toFixed(2)} billed every ${plan.name}`
+                                            }
+                                        </p>
+
+                                        {/* Divider */}
+                                        <div className="h-px bg-white/[0.06] mb-4" />
+
+                                        {/* Features */}
+                                        <ul className="space-y-2.5 flex-1">
+                                            {[
+                                                ...PRIME_PLAN_FEATURES,
+                                                ...(plan.discount > 0 ? [`${plan.discount * 100}% off vs monthly`] : []),
+                                            ].map((feature, i) => (
+                                                <li key={i} className="flex items-center gap-2 text-xs text-[#c8c8d8]">
+                                                    <IconCheck className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                                                    {feature}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                );
+                            })}
                         </div>
 
-                        {/* Upgrade Options */}
-                        {!isPrime && (
-                            <>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                                        {Object.entries(planDetails).map(([planKey, plan]) => {
-                                        
-                                            const isSelected = selectedDuration === planKey;
-
-                                            return (
-                                                <Card
-                                                    key={planKey}
-                                                    className={`cursor-pointer transition-colors ${isSelected
-                                                        ? "border border-purple-400 bg-zinc-100 dark:bg-slate-900/60"
-                                                        : "border border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-900/40 hover:border-zinc-300 dark:hover:border-slate-600"
-                                                        }`}
-                                                    onClick={() => setSelectedDuration(planKey as PlanDuration)}
-                                                >
-                                                    <CardHeader className="pb-2">
-                                                        <div className="flex flex-col justify-center sm:flex-row sm:items-center gap-2 sm:justify-between">
-                                                            <div className="flex flex-col gap-1">
-                                                                <CardTitle className={`text-[11px] xs:text-sm font-semibold ${isSelected
-                                                                    ? "text-purple-700 dark:text-purple-300"
-                                                                    : "text-zinc-900 dark:text-slate-50"
-                                                                    }`}>
-                                                                    {plan.name}
-                                                                </CardTitle>
-                                                                <CardDescription className="text-[8px] sm:text-xs text-zinc-500 dark:text-slate-400">
-                                                                    {planKey === "ONEMONTH"
-                                                                        ? "Billed monthly"
-                                                                        : `Billed every ${plan.name}`}
-                                                                </CardDescription>
-                                                            </div>
-                                                            {plan.discount > 0 && (
-                                                                <Badge className=" bg-emerald-400/20 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30 dark:border-emerald-600/30 text-[10px] xs:text-xs">
-                                                                    Save {plan.discount*100}%
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </CardHeader>
-                                                    <CardContent className="mt-auto">
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-baseline gap-2 flex-wrap">
-                                                                <span className={`text-base text-[14px] xs:text-xl font-semibold ${isSelected
-                                                                    ? "text-purple-700 dark:text-purple-300"
-                                                                    : "text-zinc-900 dark:text-slate-50"
-                                                                    }`}>
-                                                                    {currencyBasePriceMap[currency].sign}{plan.price.toFixed(2)}
-                                                                </span>
-                                                                {plan.discount > 0 && (
-                                                                    <span className="text-[8px] xs:text-xs text-zinc-400 dark:text-slate-500 line-through">
-                                                                        ${plan.originalPrice.toFixed(2)}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {planKey != "ONEMONTH" && (
-                                                                <div className="text-[10px] xs:text-xs text-zinc-500 dark:text-slate-400">
-                                                                    {currencyBasePriceMap[currency].sign}{plan.monthlyPrice.toFixed(2)}/month
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            );
-                                        })}
-                                    </div>
-                                    <Button
-                                        onClick={() => handlePay(selectedDuration,currency)}
-                                        disabled={loading}
-                                        className="w-full text-sm xs:text-base hover:bg-gradient-to-r hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 hover:text-white transition-colors"
-                                    >
-                                        {loading ? (
-                                            <span className="flex items-center gap-2">
-                                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                <span className="text-xs xs:text-sm">Processing...</span>
-                                            </span>
-                                        ) : (
-                                            <>
-                                                <IconCrown className="h-4 w-4 mr-2" />
-                                                <span className="text-xs xs:text-sm">Upgrade to Prime</span>
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
-                            </>
+                        {/* CTA */}
+                        {!isPrime ? (
+                            <Button
+                                onClick={() => handlePay(selectedDuration, currency)}
+                                disabled={loading}
+                                className="w-full bg-[#6366f1] hover:bg-[#5558e8] text-white text-sm transition-colors"
+                            >
+                                {loading ? (
+                                    <span className="flex items-center gap-2">
+                                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Processing...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <IconCrown className="h-4 w-4 mr-2" />
+                                        Upgrade to Prime
+                                        <span className="ml-2 opacity-60">·</span>
+                                        <span className="ml-2 font-normal">{planDetails[selectedDuration].name}</span>
+                                        <span className="ml-1 opacity-60 font-normal">({currencyBasePriceMap[currency].sign}{planDetails[selectedDuration].price.toFixed(2)})</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : (
+                            <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5">
+                                <IconCrown className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                                <p className="text-sm text-[#e4e4f0]">
+                                    You're on Prime — active until{" "}
+                                    <span className="text-yellow-400 font-medium">
+                                        {new Date(user.primeExpiry!).toLocaleDateString()}
+                                    </span>
+                                </p>
+                            </div>
                         )}
                     </div>
                 </DialogContent>
