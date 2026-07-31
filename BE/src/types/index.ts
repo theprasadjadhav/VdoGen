@@ -57,16 +57,6 @@ export type JobResponse = {
     jobName?:string;
 }
 
-export type StatusJobData = {
-    k8sJobName:string;
-    id:number;
-    conversationId:string;
-    prompt: string;
-    specs:VideoSpecsType;
-    userId:string;
-    retry:number
-}
-
 export type jwtType = {
     data: {
         id: string;

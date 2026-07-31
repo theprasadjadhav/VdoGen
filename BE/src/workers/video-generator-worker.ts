@@ -1,12 +1,12 @@
 import { Job, Worker } from "bullmq";
-import type { AspectRatioType, JobData, JobResponse, ResolutionType, StatusJobData, VideoSpecsType } from "../types";
+import type { AspectRatioType, JobData, JobResponse, ResolutionType, VideoSpecsType } from "../types";
 import seedDataValid from "../util/llmResValid.json" with { type: "json"}
 import seedDataInvalid from "../util/llmResInvalid.json" with { type: "json"}
 import seedDataError from "../util/llmResError.json" with { type: "json"}
 import { resolutionMap, videoStatusEnum } from "../types";
 import fs from "fs";
 import path from "path";
-import { k8s, k8sBatchClient, Anthropic, anthropic, prismaClient, redis, bucketName, StatusQueue, redisConfig, k8sApi, namespace } from "../util/config";
+import { k8s, k8sBatchClient, Anthropic, anthropic, prismaClient, redis, bucketName, redisConfig, k8sApi, namespace } from "../util/config";
 import { logger } from "../util/config";
 import { downloadFile, uploadFileToStorage } from "../util/gcp";
 
@@ -650,15 +650,6 @@ async function jobProcessor(job: Job): Promise<JobResponse> {
             msg: "[Worker] Created k8s job",
             id,
             jobName
-        });
-
-        const statusJobData: StatusJobData = { k8sJobName: jobName, id, conversationId, prompt, specs, userId, retry }
-        await StatusQueue.add('status-job', statusJobData, { delay: 10_000 })
-        logger.info({
-            msg: "[Worker] Added status job to queue",
-            id,
-            k8sJobName: jobName,
-            retry
         });
 
         return {

@@ -3,7 +3,7 @@ import { PrismaClient } from "../../generated/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 import { Queue } from "bullmq";
 import IORedis, { Redis, type RedisOptions } from 'ioredis';
-import type { JobData, StatusJobData } from "../types";
+import type { JobData } from "../types";
 import { Storage } from "@google-cloud/storage";
 import pino from "pino";
 import path from "path";
@@ -159,16 +159,6 @@ export const JobQueue = new Queue<JobData>('Job-Queue', {
     }
 });
 
-// Status Queue Configuration
-export const StatusQueue = new Queue<StatusJobData>('Status-Queue', {
-    connection: redisConfig,
-    defaultJobOptions: {
-        removeOnComplete: true,
-        removeOnFail: true
-    }
-});
-
-
 export const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -189,8 +179,7 @@ process.on('SIGTERM', async () => {
     await Promise.all([
         prismaClient.$disconnect(),
         redis.quit(),
-        JobQueue.close(),
-        StatusQueue.close()
+        JobQueue.close()
     ]);
     process.exit(0);
 });
