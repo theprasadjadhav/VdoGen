@@ -171,22 +171,22 @@ export function Profile({ open, setOpen }: ProfileProps) {
     return (
         <>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="w-full sm:max-w-[420px] max-h-[95vh] overflow-y-auto bg-[#0d0d0d] border border-white/[0.08] shadow-[0_25px_60px_rgba(0,0,0,0.6)] px-0 py-0">
+                <DialogContent className="w-full sm:max-w-[420px] max-h-[95vh] overflow-y-auto bg-white dark:bg-[#0d0d0d] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_25px_60px_rgba(0,0,0,0.6)] px-0 py-0">
 
                     {/* Profile card header */}
-                    <div className="flex flex-col items-center gap-3 px-6 pt-8 pb-6 border-b border-white/[0.06]">
-                        <Avatar className="h-20 w-20 border-2 border-white/[0.12]">
+                    <div className="flex flex-col items-center gap-3 px-6 pt-8 pb-6 border-b border-zinc-200 dark:border-white/[0.06]">
+                        <Avatar className="h-20 w-20 border-2 border-zinc-300 dark:border-white/[0.12]">
                             <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
                             <AvatarFallback className="bg-gradient-to-br from-[#6366f1] to-[#a78bfa] text-white text-2xl font-semibold">
                                 {getInitials(user.name)}
                             </AvatarFallback>
                         </Avatar>
                         <div className="text-center">
-                            <h3 className="text-lg font-semibold text-[#e4e4f0] flex items-center justify-center gap-2">
+                            <h3 className="text-lg font-semibold text-zinc-900 dark:text-[#e4e4f0] flex items-center justify-center gap-2">
                                 {user.name}
                                 {isPrime && <IconCrown className="h-4 w-4 text-yellow-400" />}
                             </h3>
-                            <p className="text-sm text-[#64648a] flex items-center justify-center gap-1.5 mt-1">
+                            <p className="text-sm text-zinc-500 dark:text-[#64648a] flex items-center justify-center gap-1.5 mt-1">
                                 <IconMail className="h-3.5 w-3.5" />
                                 {user.email || "No email"}
                             </p>
@@ -197,7 +197,7 @@ export function Profile({ open, setOpen }: ProfileProps) {
                                         Prime Member
                                     </span>
                                     {user.primeExpiry && (
-                                        <span className="text-[11px] text-[#64648a]">
+                                        <span className="text-[11px] text-zinc-500 dark:text-[#64648a]">
                                             Expires {new Date(user.primeExpiry).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                         </span>
                                     )}
@@ -205,10 +205,10 @@ export function Profile({ open, setOpen }: ProfileProps) {
                             )}
                             {!isPrime && (
                                 <div className="mt-2 flex items-center justify-center gap-2">
-                                    <span className="text-xs text-[#64648a] px-2 py-0.5 rounded border border-white/[0.08]">Free Plan</span>
+                                    <span className="text-xs text-zinc-500 dark:text-[#64648a] px-2 py-0.5 rounded border border-zinc-300 dark:border-white/[0.08]">Free Plan</span>
                                     <button
                                         onClick={fetchStatus}
-                                        className="flex items-center gap-1 text-[11px] text-[#64648a] hover:text-[#e4e4f0] transition-colors"
+                                        className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-[#64648a] hover:text-zinc-900 dark:hover:text-[#e4e4f0] transition-colors"
                                         title="Refresh membership status"
                                     >
                                         <IconRefresh className="h-3 w-3" />
@@ -240,7 +240,7 @@ export function Profile({ open, setOpen }: ProfileProps) {
                                 <CollapsibleTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className="w-full justify-between bg-white/[0.03] border-white/[0.08] text-[#c8c8d8] hover:bg-white/[0.06] hover:text-[#e4e4f0] text-sm"
+                                        className="w-full justify-between bg-zinc-50 dark:bg-white/[0.03] border-zinc-200 dark:border-white/[0.08] text-zinc-600 dark:text-[#c8c8d8] hover:bg-zinc-100 dark:hover:bg-white/[0.06] hover:text-zinc-900 dark:hover:text-[#e4e4f0] text-sm"
                                     >
                                         <div className="flex items-center gap-2">
                                             <IconKey className="h-4 w-4" />
@@ -257,10 +257,10 @@ export function Profile({ open, setOpen }: ProfileProps) {
                                                 name="currentPassword"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-[#8a8390] text-sm">Current Password</FormLabel>
+                                                        <FormLabel className="text-zinc-500 dark:text-[#8a8390] text-sm">Current Password</FormLabel>
                                                         <FormControl>
                                                             <Input type="password" placeholder="••••••••" autoComplete="current-password"
-                                                                className="bg-[#111118] border-white/[0.08] text-[#e4e4f0] placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
+                                                                className="bg-zinc-50 dark:bg-[#111118] border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-[#e4e4f0] placeholder:text-zinc-400 dark:placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
                                                                 {...field} />
                                                         </FormControl>
                                                         <FormMessage />
@@ -272,13 +272,13 @@ export function Profile({ open, setOpen }: ProfileProps) {
                                                 name="newPassword"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-[#8a8390] text-sm">New Password</FormLabel>
+                                                        <FormLabel className="text-zinc-500 dark:text-[#8a8390] text-sm">New Password</FormLabel>
                                                         <FormControl>
                                                             <Input type="password" placeholder="••••••••" autoComplete="new-password"
-                                                                className="bg-[#111118] border-white/[0.08] text-[#e4e4f0] placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
+                                                                className="bg-zinc-50 dark:bg-[#111118] border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-[#e4e4f0] placeholder:text-zinc-400 dark:placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
                                                                 {...field} />
                                                         </FormControl>
-                                                        <FormDescription className="text-[#64648a] text-xs">
+                                                        <FormDescription className="text-zinc-500 dark:text-[#64648a] text-xs">
                                                             Use at least 8 characters with numbers & symbols.
                                                         </FormDescription>
                                                         <FormMessage />
@@ -290,10 +290,10 @@ export function Profile({ open, setOpen }: ProfileProps) {
                                                 name="confirmPassword"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-[#8a8390] text-sm">Confirm New Password</FormLabel>
+                                                        <FormLabel className="text-zinc-500 dark:text-[#8a8390] text-sm">Confirm New Password</FormLabel>
                                                         <FormControl>
                                                             <Input type="password" placeholder="••••••••" autoComplete="new-password"
-                                                                className="bg-[#111118] border-white/[0.08] text-[#e4e4f0] placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
+                                                                className="bg-zinc-50 dark:bg-[#111118] border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-[#e4e4f0] placeholder:text-zinc-400 dark:placeholder:text-[#46424e] focus-visible:ring-[#6366f1]/30 focus-visible:border-[#6366f1]"
                                                                 {...field} />
                                                         </FormControl>
                                                         <FormMessage />
@@ -316,7 +316,7 @@ export function Profile({ open, setOpen }: ProfileProps) {
                         <Button
                             variant="outline"
                             onClick={handleLogout}
-                            className="w-full border-red-500/25 text-[#f87171] hover:bg-red-500/[0.08] hover:border-red-500/50 hover:text-[#fca5a5] bg-transparent text-sm transition-colors"
+                            className="w-full border-red-400/40 dark:border-red-500/25 text-[#f87171] hover:bg-red-500/[0.08] hover:border-red-500/50 hover:text-[#fca5a5] bg-transparent text-sm transition-colors"
                         >
                             <IconLogout className="h-4 w-4 mr-2" />
                             Sign out

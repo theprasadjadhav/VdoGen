@@ -184,12 +184,12 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
     return (
         <>
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="!max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-[#0d0d0d] border border-white/[0.08] shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+                <DialogContent className="!max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-[#0d0d0d] border border-zinc-200 dark:border-white/[0.08] shadow-sm dark:shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
                     <DialogHeader className="text-center pb-4">
-                        <DialogTitle className="text-xl sm:text-2xl font-semibold text-[#e4e4f0]">
+                        <DialogTitle className="text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-[#e4e4f0]">
                             Upgrade to Prime
                         </DialogTitle>
-                        <DialogDescription className="text-sm text-[#64648a]">
+                        <DialogDescription className="text-sm text-zinc-500 dark:text-[#64648a]">
                             Unlock unlimited video generation and premium features
                         </DialogDescription>
                     </DialogHeader>
@@ -209,8 +209,8 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
                                             isPrime ? "cursor-default" : "cursor-pointer"
                                         } ${
                                             isSelected && !isPrime
-                                                ? "border-[#6366f1] shadow-[0_0_0_1px_rgba(99,102,241,0.12),0_8px_32px_rgba(99,102,241,0.08)] bg-[#111111]"
-                                                : "border-white/[0.08] bg-[#111111] hover:border-white/[0.15]"
+                                                ? "border-[#6366f1] shadow-[0_0_0_1px_rgba(99,102,241,0.12),0_8px_32px_rgba(99,102,241,0.08)] bg-indigo-50/60 dark:bg-[#111111]"
+                                                : "border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-[#111111] hover:border-zinc-300 dark:hover:border-white/[0.15]"
                                         }`}
                                     >
                                         {/* Most Popular badge */}
@@ -222,11 +222,11 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
 
                                         {/* Plan name row with save badge */}
                                         <div className="flex items-center justify-between mb-3">
-                                            <p className={`text-xs font-semibold uppercase tracking-widest ${isSelected && !isPrime ? "text-[#a78bfa]" : "text-[#64648a]"}`}>
+                                            <p className={`text-xs font-semibold uppercase tracking-widest ${isSelected && !isPrime ? "text-[#6366f1] dark:text-[#a78bfa]" : "text-zinc-500 dark:text-[#64648a]"}`}>
                                                 {plan.name}
                                             </p>
                                             {plan.discount > 0 && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-400/10 text-emerald-400">
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400">
                                                     Save {plan.discount * 100}%
                                                 </span>
                                             )}
@@ -234,13 +234,13 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
 
                                         {/* Price */}
                                         <div className="flex items-baseline gap-0.5 mb-1">
-                                            <span className="text-base text-[#e4e4f0]">{currencyBasePriceMap[currency].sign}</span>
-                                            <span className="text-4xl font-bold text-[#e4e4f0] leading-none tracking-tight">{plan.monthlyPrice.toFixed(2)}</span>
-                                            <span className="text-sm text-[#64648a] ml-1">/mo</span>
+                                            <span className="text-base text-zinc-900 dark:text-[#e4e4f0]">{currencyBasePriceMap[currency].sign}</span>
+                                            <span className="text-4xl font-bold text-zinc-900 dark:text-[#e4e4f0] leading-none tracking-tight">{plan.monthlyPrice.toFixed(2)}</span>
+                                            <span className="text-sm text-zinc-500 dark:text-[#64648a] ml-1">/mo</span>
                                         </div>
 
                                         {/* Billing sub */}
-                                        <p className="text-xs text-[#64648a] mb-5 min-h-[1.25rem]">
+                                        <p className="text-xs text-zinc-500 dark:text-[#64648a] mb-5 min-h-[1.25rem]">
                                             {planKey === "ONEMONTH"
                                                 ? "Billed monthly"
                                                 : `${currencyBasePriceMap[currency].sign}${plan.price.toFixed(2)} billed every ${plan.name}`
@@ -248,7 +248,7 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
                                         </p>
 
                                         {/* Divider */}
-                                        <div className="h-px bg-white/[0.06] mb-4" />
+                                        <div className="h-px bg-zinc-200 dark:bg-white/[0.06] mb-4" />
 
                                         {/* Features */}
                                         <ul className="space-y-2.5 flex-1">
@@ -256,8 +256,8 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
                                                 ...PRIME_PLAN_FEATURES,
                                                 ...(plan.discount > 0 ? [`${plan.discount * 100}% off vs monthly`] : []),
                                             ].map((feature, i) => (
-                                                <li key={i} className="flex items-center gap-2 text-xs text-[#c8c8d8]">
-                                                    <IconCheck className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                                                <li key={i} className="flex items-center gap-2 text-xs text-zinc-600 dark:text-[#c8c8d8]">
+                                                    <IconCheck className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                                                     {feature}
                                                 </li>
                                             ))}
@@ -290,9 +290,9 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
                                 )}
                             </Button>
                         ) : (
-                            <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5">
+                            <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-yellow-400/30 dark:border-yellow-400/20 bg-yellow-50 dark:bg-yellow-400/5">
                                 <IconCrown className="h-5 w-5 text-yellow-400 flex-shrink-0" />
-                                <p className="text-sm text-[#e4e4f0]">
+                                <p className="text-sm text-zinc-900 dark:text-[#e4e4f0]">
                                     You're on Prime — active until{" "}
                                     <span className="text-yellow-400 font-medium">
                                         {new Date(user.primeExpiry!).toLocaleDateString()}
