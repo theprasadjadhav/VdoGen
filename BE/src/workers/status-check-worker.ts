@@ -205,3 +205,10 @@ process.on('uncaughtException', (error: Error) => {
     logger.error({ msg: "[StatusWorker] Uncaught exception, exiting", error: error.message });
     process.exit(1);
 });
+
+process.on('SIGTERM', async () => {
+    await informer.stop();
+    await prismaClient.$disconnect();
+    await redis.quit();
+    process.exit(0);
+});

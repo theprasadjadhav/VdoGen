@@ -97,7 +97,7 @@ authRouter.post("/signup", authLimiter, async (req, res) => {
 
     try {
 
-        if (!name || !email || !password || !confirmPassword || password != confirmPassword) {
+        if (!name || !email || !password || !confirmPassword || password !== confirmPassword) {
             logger.info({
                 msg: "Signup failed: Invalid input for signup",
                 name,
@@ -467,7 +467,7 @@ authRouter.get("/signout", (req, res) => {
         method: req.method,
         url: req.originalUrl
     });
-    res.clearCookie("token");
+    res.clearCookie("token",cookieOptions);
     res.status(200).json({ success: true, message: "Logged out successfully" });
 })
 

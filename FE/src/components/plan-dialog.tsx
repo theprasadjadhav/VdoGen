@@ -109,14 +109,14 @@ export function PlanDialog({ open, setOpen }: PlanDialogProps) {
                 throw new Error ("Authentication required. Please log in.")
             }
             if (res.status !== 200 || !res.data?.success) {
-                setStatusError("Failed to fetch payment status, Please tey again later.");
+                setStatusError("Failed to fetch payment status, Please try again later.");
                 setStatusLoading(false);
                 return;
             }
             setStatus(res.data.paymentStatus);
             setUser(res.data.user);
         } catch (err) {
-            setStatusError(err instanceof Error ? err.message : "Failed to fetch payment status, Please tey again later..");
+            setStatusError(err instanceof Error ? err.message : "Failed to fetch payment status, Please try again later..");
         } finally {
             setStatusLoading(false);
             setTimeout(() => setIsStatusOpen(false), 3000)

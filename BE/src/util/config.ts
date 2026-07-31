@@ -81,7 +81,7 @@ try {
 const k8sBatchClient = kc.makeApiClient(k8s.BatchV1Api);
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 const watch = new k8s.Watch(kc);
-const namespace = "vdogen"
+const namespace =  process.env.K8S_NAMESPACE ?? "vdogen"
 export { kc, k8s, k8sBatchClient, k8sApi, watch, namespace };
 
 
@@ -98,7 +98,7 @@ export const anthropic = new Anthropic({
 
 // Google Cloud Storage Configuration
 export const storage = new Storage();
-export const bucketName = 'vdogen';
+export const bucketName =  process.env.K8S_NAMESPACE ?? "vdogen"
 
 // Redis Configuration
 const redisConfig:RedisOptions = {

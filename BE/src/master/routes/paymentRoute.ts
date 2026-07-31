@@ -122,14 +122,14 @@ paymentRoute.post("/webhook", express.raw({ type: "application/json" }), async (
             create: {
                 razorpayOrderId: paymentDetails.order_id,
                 razorpayPaymentId: paymentDetails.id,
-                plan: paymentDetails.notes.plan,
+                plan: paymentDetails.notes?.plan,
                 amount: paymentDetails.amount,
                 currency: paymentDetails.currency,
                 customerEmail: paymentDetails.email,
                 status: status,
                 paidAt: paidAt,
                 paymentMethod: paymentDetails.method,
-                userId: paymentDetails.notes.userId
+                userId: paymentDetails.notes?.userId
             },
             include: {
                 user: true
@@ -298,8 +298,16 @@ paymentRoute.post('/pay', paymentLimiter, async (req, res) => {
             currency: order.currency,
         });
     } catch (err) {
-        console.log(JSON.stringify(err))
+        logger.error({
+            msg: "Failed to create Razorpay order",
+            userId: user.id,
+            plan: selectedPlan,
+            currency: currency,
+            error: err instanceof Error ? err.message : err,
+            stack: err instanceof Error ? err.stack : undefined
+        });
         return sendError(res, 500, err instanceof Error ? err.message : "Failed to create Razorpay order");
+   
     }
 
 });

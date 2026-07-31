@@ -480,7 +480,7 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
             }
         }
     }
-    //if maxRetries is 0 or negative
+    //unreachable
     throw new Error("Failed to create k8s job")
 }
 
