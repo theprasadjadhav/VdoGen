@@ -186,6 +186,7 @@ paymentRoute.use(authMiddleware)
 paymentRoute.post("/status", paymentLimiter , async (req, res) => {
 
     const { payment_id } = req.query
+    const userId = req.user?.id
 
     if (!payment_id || typeof payment_id !== 'string') {
         logger.info({
@@ -198,7 +199,8 @@ paymentRoute.post("/status", paymentLimiter , async (req, res) => {
     try {
         const payment = await prismaClient.payment.findUnique({
             where: {
-                razorpayPaymentId: payment_id
+                razorpayPaymentId: payment_id,
+                userId: userId
             },
             include: {
                 user: {

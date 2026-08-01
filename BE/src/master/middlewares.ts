@@ -52,7 +52,10 @@ export async function validateInputs(req: Request, res: Response, nxt: NextFunct
 
         if (conversationId && conversationId !== "" && conversationId !== "new") {
             const conversation = await prismaClient.conversation.findFirst({
-                where: { id: conversationId },
+                where: { 
+                    id: conversationId,
+                    userId: req.user?.id
+                 },
             });
             if (conversation === null) {
                 logger.warn({

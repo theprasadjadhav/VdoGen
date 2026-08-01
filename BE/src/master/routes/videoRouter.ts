@@ -13,6 +13,7 @@ const videoRouter = Router()
 videoRouter.get("/:id/manifest", async (req, res) => {
     const type = req.query.type
     const id = req.params.id
+    const userId = req.user?.id;
 
     if (!type || !(type === "preview" || type === "edit")) {
         logger.info({
@@ -33,6 +34,20 @@ videoRouter.get("/:id/manifest", async (req, res) => {
             sendError(res, 400, "The provided video ID is invalid or missing");
             return;
         }
+       
+        const video = await prismaClient.video.findUnique({
+            where: { id: Number(id), userId },
+        });
+        if (!video) {
+            logger.info({
+                msg: "[Manifest] Video does not belong to user or not found",
+                id,
+                userId,
+            });
+            sendError(res, 403, "Forbidden: You do not have access to this video");
+            return;
+        }
+
 
         try {
             const expiry = type === "edit" ? 3000 : 60;
