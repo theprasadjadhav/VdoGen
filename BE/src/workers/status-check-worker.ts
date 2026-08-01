@@ -23,6 +23,7 @@ async function processJob(job: k8s.V1Job) {
 
     const videoId = labels["videoId"];
     const retry = labels["retry"]
+    let userId = labels["userId"]
 
     if (!videoId) {
         logger.warn({
@@ -32,7 +33,30 @@ async function processJob(job: k8s.V1Job) {
         return;
     }
 
-    const cachedStatus = await redis.get(`video:${videoId}`);
+    const statusKey = (uid: string) => `video:${uid}:${videoId}`;
+
+    if (!userId) {
+        logger.warn({
+            msg: "userId label missing, falling back to DB lookup",
+            job: job.metadata?.name,
+            videoId,
+        });
+        const video = await prismaClient.video.findFirst({
+            where: { id: Number(videoId) },
+            select: { userId: true }
+        });
+        if (!video) {
+            logger.error({
+                msg: "Unable to determine userId for job",
+                job: job.metadata?.name,
+                videoId,
+            });
+            return;
+        }
+        userId = video.userId;
+    }
+
+    const cachedStatus = await redis.get(statusKey(userId));
     const terminal = [videoStatusEnum.COMPLETE, videoStatusEnum.FAILED, videoStatusEnum.ERROR];
 
     if (terminal.includes(cachedStatus as any)) {
@@ -59,7 +83,7 @@ async function processJob(job: k8s.V1Job) {
         });
 
         await redis.set(
-            `video:${videoId}`,
+            statusKey(userId),
             videoStatusEnum.COMPLETE,
             "EX",
             3600
@@ -117,7 +141,7 @@ async function processJob(job: k8s.V1Job) {
 
             } else {
                 await redis.set(
-                    `video:${videoId}`,
+                    statusKey(userId),
                     videoStatusEnum.ERROR,
                     "EX",
                     3600
@@ -144,7 +168,7 @@ async function processJob(job: k8s.V1Job) {
             });
 
             await redis.set(
-                `video:${videoId}`,
+                statusKey(userId),
                 videoStatusEnum.FAILED,
                 "EX",
                 3600

@@ -301,7 +301,7 @@ function getJobName(id: number, retry: number) {
     return `job-${id}-${retry}`
 }
 
-async function createK8sJob(id: number, retry: number, codeFileName: string, specs: VideoSpecsType, maxRetries = 3): Promise<string> {
+async function createK8sJob(id: number, retry: number, codeFileName: string, specs: VideoSpecsType, userId: string, maxRetries = 3): Promise<string> {
     const jobName = getJobName(id, retry)
     const bucket = bucketName
     const resolution = getVideoDimensions(specs.aspectRatio, specs.resolution)
@@ -314,7 +314,8 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
             labels: {
                 app: "script-runner",
                 videoId: String(id),
-                retry: String(retry)
+                retry: String(retry),
+                userId: userId
             }
         },
         spec: {
@@ -645,7 +646,7 @@ async function jobProcessor(job: Job): Promise<JobResponse> {
             codeFileName
         });
 
-        const jobName = await createK8sJob(id, retry, codeFileName, specs)
+        const jobName = await createK8sJob(id, retry, codeFileName, specs, userId)
         logger.info({
             msg: "[Worker] Created k8s job",
             id,
@@ -745,7 +746,7 @@ jobWorker.on("failed", async (job, error) => {
                 Error: error.message
             }
         })
-        await redis.set(`video:${job.data.id}`, videoStatusEnum.FAILED, 'EX', 3600)
+        await redis.set(`video:${job.data.userId}:${job.data.id}`, videoStatusEnum.FAILED, 'EX', 3600)
         logger.info({
             msg: "[Worker] Updated DB and cache after failed job",
             id: job.data.id
@@ -776,7 +777,7 @@ jobWorker.on("completed", async (job) => {
                     status: res.status
                 }
             });
-            await redis.set(`video:${job.data.id}`, res.status, 'EX', 3600);
+            await redis.set(`video:${job.data.userId}:${job.data.id}`, res.status, 'EX', 3600);
             logger.info({
                 msg: "[Worker] Updated DB and cache for status PROCESSING",
                 id: job.data.id,
@@ -791,7 +792,7 @@ jobWorker.on("completed", async (job) => {
                     Error: res.message
                 }
             });
-            await redis.set(`video:${job.data.id}`, res.status, 'EX', 3600);
+            await redis.set(`video:${job.data.userId}:${job.data.id}`, res.status, 'EX', 3600);
             logger.info({
                 msg: "[Worker] Updated DB and cache with error/state",
                 id: job.data.id,

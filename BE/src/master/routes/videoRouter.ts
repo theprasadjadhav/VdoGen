@@ -187,7 +187,7 @@ videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) =>
         const jobData: JobData = { id: video.id, conversationId, prompt, specs, userId, retry: 0 }
 
         await JobQueue.add("video-job", jobData)
-        await redis.set(`video:${video.id}`, videoStatusEnum.INITIATED, "EX", 3600)
+        await redis.set(`video:${userId}:${video.id}`, videoStatusEnum.INITIATED, "EX", 3600)
         logger.info({
             msg: "Job queued and Redis status set",
             videoId: video.id,
@@ -241,6 +241,7 @@ videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) =>
 
 videoRouter.get("/status", async (req, res) => {
     const id = req.query.id
+    const userId = req.user?.id
     if (!id || isNaN(Number(id)) || !Number.isInteger(Number(id))) {
         logger.info({
             msg: "[Status] Invalid input for status check",
@@ -254,7 +255,7 @@ videoRouter.get("/status", async (req, res) => {
     let status = null;
 
     try {
-        status = await redis.get(`video:${parsedId}`)
+        status = await redis.get(`video:${userId}:${parsedId}`)
         logger.info({
             msg: "[Status] Redis status fetch",
             id: parsedId,
@@ -279,7 +280,7 @@ videoRouter.get("/status", async (req, res) => {
         res.status(200).json({ success: true, message: "Video status fetched", id: parsedId, status })
     } else {
         try {
-            const video = await prismaClient.video.findFirst({ where: { id: parsedId } })
+            const video = await prismaClient.video.findFirst({ where: { id: parsedId, userId } })
             logger.info({
                 msg: "[Status] DB lookup for video",
                 id: parsedId,
