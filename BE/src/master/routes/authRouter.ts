@@ -43,7 +43,7 @@ authRouter.post("/signin", authLimiter, async (req, res) => {
                 method: req.method,
                 url: req.originalUrl
             });
-            return sendError(res, 401, "No account found with this email address. Please check your email or sign up.");
+            return sendError(res, 401, "Authentication failed: Invalid email or password");
         }
         const userIdentity = usersIdentities.find(identities => identities.provider === "Email")
 
