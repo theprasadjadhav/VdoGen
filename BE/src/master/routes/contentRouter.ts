@@ -152,16 +152,19 @@ contentRouter.delete("/conversation/:conversationId", async (req, res) => {
                 id: true,
                 videos: {
                     select: {
-                        id: true
+                        id: true,
+                        codeFileName: true
                     }
                 }
             }
         });
 
-        const videoIds = conversation.videos.map(v => v.id);
-
-        for (const videoId of videoIds) {
-            const codeFilePath = `code/${videoId}.py`;
+        for (const video of conversation.videos) {
+            const videoId = video.id;
+           
+            const codeFilePath = video.codeFileName
+                ? `code/${video.codeFileName}`
+                : `code/${videoId}.py`;
             try {
                 await deleteFile(codeFilePath);
                 logger.info({
