@@ -2,7 +2,7 @@
 
 import { videoStatusEnum } from "../types";
 import type { VideoSpecsType } from "../types";
-import { k8s, kc, k8sBatchClient, JobQueue, redis, prismaClient, logger, namespace } from "../util/config";
+import { k8s, kc, k8sBatchClient, k8sApi, JobQueue, redis, prismaClient, logger, namespace } from "../util/config";
 
 
 const informer = k8s.makeInformer(
@@ -15,6 +15,43 @@ const informer = k8s.makeInformer(
         })
 );
 
+
+// Only decide how to handle a failed job once the pod actually reports container
+// statuses, so we never guess which container failed. Polls up to `timeoutMs`.
+async function waitForFailureAttribution(
+    jobName: string,
+    timeoutMs: number,
+): Promise<{ known: boolean; rendererFailed: boolean }> {
+    const pollIntervalMs = 2000;
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+        try {
+            const pods = await k8sApi.listNamespacedPod({
+                namespace: namespace,
+                labelSelector: `job-name=${jobName}`
+            });
+            const pod = pods.items?.[0];
+            const initStatuses = pod?.status?.initContainerStatuses;
+            if (pod?.status && initStatuses && initStatuses.length > 0) {
+                const rendererStatus = initStatuses.find(s => s.name === "manim-renderer");
+                const rendererFailed = !!rendererStatus?.state?.terminated &&
+                    rendererStatus.state.terminated.exitCode !== 0;
+                return { known: true, rendererFailed };
+            }
+        } catch (err) {
+            logger.warn({
+                msg: "Failed to fetch pod for failure attribution, will retry",
+                jobName,
+                error: err instanceof Error ? err.message : err,
+            });
+        }
+
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+
+    return { known: false, rendererFailed: false };
+}
 
 async function processJob(job: k8s.V1Job) {
     const labels = job.metadata?.labels;
@@ -93,6 +130,57 @@ async function processJob(job: k8s.V1Job) {
     }
 
     if (failed) {
+
+        const jobName = job.metadata?.name ?? "";
+        const attribution = await waitForFailureAttribution(jobName, 15000);
+
+        if (!attribution.known) {
+            logger.error({
+                msg: "Could not determine which container failed after timeout; NOT retrying AI to avoid wasting an LLM attempt.",
+                videoId,
+                retry,
+                jobName,
+            });
+            await prismaClient.video.update({
+                where: { id: Number(videoId) },
+                data: {
+                    status: videoStatusEnum.ERROR,
+                    isError: true,
+                },
+            });
+
+            await redis.set(
+                statusKey(userId),
+                videoStatusEnum.ERROR,
+                "EX",
+                3600
+            );
+            return;
+        }
+
+        if (!attribution.rendererFailed) {
+            logger.warn({
+                msg: "Job failed but renderer initContainer did not report failure",
+                videoId,
+                retry,
+                jobName,
+            });
+            await prismaClient.video.update({
+                where: { id: Number(videoId) },
+                data: {
+                    status: videoStatusEnum.ERROR,
+                    isError: true,
+                },
+            });
+
+            await redis.set(
+                statusKey(userId),
+                videoStatusEnum.ERROR,
+                "EX",
+                3600
+            );
+            return;
+        }
 
         if (Number(retry) < 2) {
 

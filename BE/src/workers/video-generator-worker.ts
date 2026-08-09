@@ -51,7 +51,8 @@ async function getPodLogs(jobName: string): Promise<string | null> {
         const podLogs = await k8sApi.readNamespacedPodLog({
             name: podName,
             namespace: namespace,
-            pretty: "true"
+            pretty: "true",
+            container: "manim-renderer"
         });
 
         logger.info({
@@ -301,10 +302,28 @@ function getJobName(id: number, retry: number) {
     return `job-${id}-${retry}`
 }
 
-async function createK8sJob(id: number, retry: number, codeFileName: string, specs: VideoSpecsType, userId: string, maxRetries = 3): Promise<string> {
+async function createK8sJob(id: number, retry: number, codeFileName: string, specs: VideoSpecsType, userId: string, codeContent: string, maxRetries = 3): Promise<string> {
     const jobName = getJobName(id, retry)
     const bucket = bucketName
     const resolution = getVideoDimensions(specs.aspectRatio, specs.resolution)
+    const configMapName = `script-source-${jobName}`
+
+    const configMap: k8s.V1ConfigMap = {
+        apiVersion: "v1",
+        kind: "ConfigMap",
+        metadata: {
+            name: configMapName,
+            labels: {
+                app: "script-runner",
+                videoId: String(id),
+                retry: String(retry),
+                userId: userId
+            }
+        },
+        data: {
+            "script.py": codeContent
+        }
+    };
 
     const jobManifest: k8s.V1Job = {
         "apiVersion": "batch/v1",
@@ -325,16 +344,26 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
             template: {
                 spec: {
                     restartPolicy: "Never",
-                    containers: [
+                    // The pod never uses the cluster service-account token.
+                    automountServiceAccountToken: false,
+                    initContainers: [
                         {
-                            name: "script-runner",
+                            // UNTRUSTED: executes the AI-generated Manim script.
+                            // Deliberately has NO GCS key, NO gcloud/gsutil, and no SA token
+                            // mounted - it receives the script via ConfigMap and writes visual
+                            // output to the shared emptyDir volume.
+                            name: "manim-renderer",
                             image: "docker.io/prasadev/manim",
+                            workingDir: "/renmanim-rendererder",
                             env: [
-                                { name: "CODE_FILE_NAME", value: codeFileName },
                                 { name: "RESOLUTION", value: resolution },
                                 { name: "FPS", value: specs.fps },
-                                { name: "BUCKET", value: bucket },
-                                { name: "ID", value: String(id) }
+                                { name: "ID", value: String(id) },
+                                { name: "HOME", value: "/cache" },
+                                { name: "TMPDIR", value: "/cache/tmp" },
+                                { name: "XDG_CACHE_HOME", value: "/cache" },
+                                { name: "MPLCONFIGDIR", value: "/cache/matplotlib" },
+                                { name: "PYTHONPYCACHEPREFIX", value: "/cache/__pycache__" }
                             ],
                             command: [
                                 'sh', '-c',
@@ -343,55 +372,39 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
 
                                 echo "=== Starting Video Processing Pipeline ==="
 
-                                # Step 1: Authenticate with GCloud
-                                echo "Authenticating with gcloud..."
-                                if ! gcloud auth activate-service-account --key-file=/var/secrets/google/key.json; then
-                                    echo "ERROR: gcloud authentication failed"
-                                    exit 1
-                                fi
-                                echo "gcloud auth successful"
-
-                                # Step 2: Download code file
-                                echo "Downloading code file from gs://$BUCKET/code/$CODE_FILE_NAME..."
-                                if ! gsutil cp "gs://$BUCKET/code/$CODE_FILE_NAME" script.py; then
-                                    echo "ERROR: Failed to download code file"
-                                    exit 1
-                                fi
-                                echo "Code file downloaded successfully"
-
-                                # Step 3: Execute Manim
+                                # Step 1: Execute Manim (script provided via ConfigMap volume)
                                 echo "=== manim_log_start ==="
-                                if ! manim script.py MainScene -o rendered.mp4 -r "$RESOLUTION" --fps "$FPS" --format mp4 --media_dir .; then
+                                if ! manim /script/script.py MainScene -o rendered.mp4 -r "$RESOLUTION" --fps "$FPS" --format mp4 --media_dir /render; then
                                     echo "ERROR: Manim rendering failed"
                                     echo "=== manim_log_end ==="
                                     exit 1
                                 fi
                                 echo "=== manim_log_end ==="
 
-                                # Step 4: Locate rendered video
+                                # Step 2: Locate rendered video
                                 echo "Searching for rendered video..."
-                                VIDEO_PATH=$(find . -type f -name "rendered.mp4" 2>/dev/null | head -n 1)
+                                VIDEO_PATH=$(find /render -type f -name "rendered.mp4" 2>/dev/null | head -n 1)
 
                                 if [ -z "$VIDEO_PATH" ]; then
                                     echo "ERROR: rendered.mp4 not found"
                                     echo "Directory contents:"
-                                    find . -type f -name "*.mp4"
+                                    find /render -type f -name "*.mp4"
                                     exit 1
                                 fi
                                 echo "Found video at: $VIDEO_PATH"
 
-                                # Step 5: Create output directory
-                                OUTPUT_DIR="video_$ID"
+                                # Step 3: Create output directory on the shared volume
+                                OUTPUT_DIR="/render/video_$ID"
                                 mkdir -p "$OUTPUT_DIR"
 
-                                # Step 6: Generate encryption key
+                                # Step 4: Generate encryption key
                                 openssl rand 16 > "$OUTPUT_DIR/enc.key"
 
-                                # Step 7: Create keyinfo file
+                                # Step 5: Create keyinfo file
                                 echo "http://localhost:8081/video/$ID/key" > $OUTPUT_DIR/enc.keyinfo
                                 echo "$OUTPUT_DIR/enc.key" >> $OUTPUT_DIR/enc.keyinfo
 
-                                # Step 8: Convert to HLS with encryption
+                                # Step 6: Convert to HLS with encryption
                                 echo "Converting to HLS format..."
                                 if ! ffmpeg -i "$VIDEO_PATH" \
                                     -c copy \
@@ -404,9 +417,59 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
                                     exit 1
                                 fi
                                 echo "HLS conversion successful"
+                                echo "=== Render Complete ==="
+                                `
+                            ],
+                            volumeMounts: [
+                                {
+                                    name: "render-volume",
+                                    mountPath: "/render"
+                                },
+                                {
+                                    name: "script-volume",
+                                    mountPath: "/script",
+                                    readOnly: true
+                                },
+                                {
+                                    name: "cache-volume",
+                                    mountPath: "/cache"
+                                }
+                            ],
+                            securityContext: rendererSecurityContext()
+                        }
+                    ],
+                    containers: [
+                        {
+                            
+                            name: "gcs-uploader",
+                            image: "docker.io/prasadev/manim",
+                            env: [
+                                { name: "BUCKET", value: bucket },
+                                { name: "ID", value: String(id) },
+                                { name: "HOME", value: "/cache" },
+                                { name: "TMPDIR", value: "/cache/tmp" },
+                                { name: "CLOUDSDK_CONFIG", value: "/cache/gcloud" }
+                            ],
+                            command: [
+                                'sh', '-c',
+                                `
+                                set -e  # Exit on any error
 
-                                # Step 9: Upload to GCS
-                                echo "Uploading to gs://$BUCKET/videos/$OUTPUT_DIR..."
+                                echo "=== gcs-uploader starting ==="
+                                OUTPUT_DIR="/render/video_$ID"
+
+                                if [ ! -d "$OUTPUT_DIR" ]; then
+                                    echo "ERROR: render output $OUTPUT_DIR not found"
+                                    exit 1
+                                fi
+
+                                # Authenticate with gcloud using the mounted service account key
+                                if ! gcloud auth activate-service-account --key-file=/var/secrets/google/key.json; then
+                                    echo "ERROR: gcloud authentication failed"
+                                    exit 1
+                                fi
+
+                                echo "Uploading to gs://$BUCKET/videos/$ID..."
                                 if ! gsutil -m cp -r "$OUTPUT_DIR" "gs://$BUCKET/videos/"; then
                                     echo "ERROR: Upload to GCS failed"
                                     exit 1
@@ -417,11 +480,20 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
                             ],
                             volumeMounts: [
                                 {
+                                    name: "render-volume",
+                                    mountPath: "/render"
+                                },
+                                {
                                     name: "gcp-keys-volume",
                                     readOnly: true,
                                     mountPath: "/var/secrets/google"
+                                },
+                                {
+                                    name: "cache-volume",
+                                    mountPath: "/cache"
                                 }
-                            ]
+                            ],
+                            securityContext: uploaderSecurityContext()
                         }
                     ],
                     imagePullSecrets: [
@@ -430,6 +502,20 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
                         }
                     ],
                     volumes: [
+                        {
+                            name: "render-volume",
+                            emptyDir: {}
+                        },
+                        {
+                            name: "cache-volume",
+                            emptyDir: {}
+                        },
+                        {
+                            name: "script-volume",
+                            configMap: {
+                                name: configMapName
+                            }
+                        },
                         {
                             name: "gcp-keys-volume",
                             secret: {
@@ -441,10 +527,69 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
             },
         }
     }
+
+    // Create the ConfigMap BEFORE the job so the pod never races a missing script volume.
+    let configMapCreated = false;
+    try {
+        await k8sApi.createNamespacedConfigMap({ namespace: namespace, body: configMap });
+        configMapCreated = true;
+        logger.info({
+            msg: "Script ConfigMap created",
+            jobName: jobName,
+            configMapName: configMapName
+        });
+    } catch (err) {
+        logger.error({
+            msg: "Failed to create script ConfigMap",
+            jobName: jobName,
+            error: err instanceof Error ? err.message : err
+        });
+        throw new Error("Failed to create script ConfigMap");
+    }
+
     let attempt = 0;
     while (attempt < maxRetries) {
         try {
-            await k8sBatchClient.createNamespacedJob({ namespace: namespace, body: jobManifest });
+            const createdJob = await k8sBatchClient.createNamespacedJob({ namespace: namespace, body: jobManifest });
+
+            const createdJobName = createdJob?.metadata?.name ?? jobManifest.metadata?.name;
+            const createdJobUid = createdJob?.metadata?.uid;
+
+            if (createdJobUid && createdJobName) {
+                try {
+                    await k8sApi.patchNamespacedConfigMap({
+                        name: configMapName,
+                        namespace: namespace,
+                        body: [
+                            {
+                                op: "add",
+                                path: "/metadata/ownerReferences",
+                                value: [
+                                    {
+                                        apiVersion: jobManifest.apiVersion,
+                                        kind: "Job",
+                                        name: createdJobName,
+                                        uid: createdJobUid,
+                                        controller: true,
+                                        blockOwnerDeletion: true
+                                    }
+                                ]
+                            }
+                        ]
+                    });
+                    logger.info({
+                        msg: "ConfigMap ownerReference set for GC",
+                        configMapName: configMapName,
+                        jobName: createdJobName
+                    });
+                } catch (patchErr) {
+                    logger.warn({
+                        msg: "Failed to set ConfigMap ownerReference; ConfigMap may need manual cleanup",
+                        configMapName: configMapName,
+                        error: patchErr instanceof Error ? patchErr.message : patchErr
+                    });
+                }
+            }
 
             logger.info({
                 msg: "Kubernetes job created successfully",
@@ -464,6 +609,23 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
             });
 
             if (attempt >= maxRetries) {
+                // Clean up the orphaned ConfigMap since the job was never created.
+                if (configMapCreated) {
+                    try {
+                        await k8sApi.deleteNamespacedConfigMap({ name: configMapName, namespace: namespace });
+                        logger.info({
+                            msg: "Deleted ConfigMap after failing to create job",
+                            configMapName: configMapName
+                        });
+                    } catch (cleanupErr) {
+                        logger.warn({
+                            msg: "Failed to delete ConfigMap during job create failure cleanup",
+                            configMapName: configMapName,
+                            error: cleanupErr instanceof Error ? cleanupErr.message : cleanupErr
+                        });
+                    }
+                }
+
                 let message = "Failed to create k8s job after retries";
                 if (err instanceof Error && err.message) {
                     message += `: ${err}`;
@@ -483,6 +645,40 @@ async function createK8sJob(id: number, retry: number, codeFileName: string, spe
     }
     //unreachable
     throw new Error("Failed to create k8s job")
+}
+
+// Hardening for the container that executes AI-generated (untrusted) code.
+function rendererSecurityContext(): k8s.V1SecurityContext {
+    return {
+        runAsNonRoot: true,
+        runAsUser: 1001,
+        runAsGroup: 1001,
+        allowPrivilegeEscalation: false,
+        readOnlyRootFilesystem: true,
+        capabilities: {
+            drop: ["ALL"]
+        },
+        seccompProfile: {
+            type: "RuntimeDefault"
+        }
+    };
+}
+
+// Hardening for the trusted uploader container that mounts the GCS key.
+function uploaderSecurityContext(): k8s.V1SecurityContext {
+    return {
+        runAsNonRoot: true,
+        runAsUser: 1001,
+        runAsGroup: 1001,
+        allowPrivilegeEscalation: false,
+        readOnlyRootFilesystem: true,
+        capabilities: {
+            drop: ["ALL"]
+        },
+        seccompProfile: {
+            type: "RuntimeDefault"
+        }
+    };
 }
 
 function createFile(content: string, jobId: number, conversationId: string): { codeFilePath: string, codeFileName: string } {
@@ -646,7 +842,7 @@ async function jobProcessor(job: Job): Promise<JobResponse> {
             codeFileName
         });
 
-        const jobName = await createK8sJob(id, retry, codeFileName, specs, userId)
+        const jobName = await createK8sJob(id, retry, codeFileName, specs, userId, cleanedContent)
         logger.info({
             msg: "[Worker] Created k8s job",
             id,
