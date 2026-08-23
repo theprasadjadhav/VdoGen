@@ -1,7 +1,9 @@
 # ── Folders ───────────────────────────────────
 ops
 videos
-issues
+# issues/: ignore everything except tracked documentation
+issues/*
+!issues/*.md
 
 # ── Dependencies ─────────────────────────────
 node_modules/
@@ -17,7 +19,10 @@ node_modules/
 # ── BE specific ──────────────────────────────
 BE/vdogen-e3f9070cfa09.json
 BE/generated/
-BE/prompts/
+# BE/prompts/: ignore prompt iterations, but keep the eval harness + docs
+BE/prompts/*
+!BE/prompts/eval/
+!BE/prompts/*.md
 
 # ── FE specific ──────────────────────────────
 FE/.wrangler/
@@ -46,6 +51,7 @@ pnpm-debug.log*
 .parcel-cache/
 .eslintcache
 .stylelintcache
+__pycache__/
 
 # ── Testing ──────────────────────────────────
 coverage/
