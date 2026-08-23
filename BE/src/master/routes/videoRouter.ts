@@ -10,6 +10,16 @@ import { videoGenLimiter } from "../rateLimiters";
 
 const videoRouter = Router()
 
+const FREE_USER_VIDEO_LIMIT = 3;
+
+// Thrown inside the /create transaction when the atomic free-tier slot
+// reservation affects 0 rows (limit already reached).
+class FreeLimitReachedError extends Error {
+    constructor() {
+        super("Free user video limit reached");
+    }
+}
+
 videoRouter.get("/:id/manifest", async (req, res) => {
     const type = req.query.type
     const id = req.params.id
@@ -119,23 +129,41 @@ videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) =>
     try {
 
         if (!isPrime) {
+            // Fast-path UX check only; the authoritative gate is the atomic
+            // reservation inside the transaction below.
             logger.info({
                 msg: "Checking free user usage limits",
                 userId: userId
             });
 
-            if (user.useCount && user.useCount >= 3) {
+            if (user.useCount >= FREE_USER_VIDEO_LIMIT) {
                 logger.warn({
                     msg: "Free user limit reached",
                     userId: userId,
                     usageCount: user.useCount
                 });
-                return sendError(res, 403, "You have reached the limit of 3 video generations for free users. Please upgrade your plan to continue.");
+                return sendError(res, 403, `You have reached the limit of ${FREE_USER_VIDEO_LIMIT} video generations for free users. Please upgrade your plan to continue.`);
 
             }
         }
 
         const video = await prismaClient.$transaction(async (tx) => {
+            if (!isPrime) {
+                // Atomically reserve a free slot: single UPDATE with a predicate on
+                // useCount. Concurrent requests serialize on the user row lock and the
+                // predicate is re-evaluated after the lock is released, so the cap can
+                // never be exceeded. The increment is undone automatically if any other
+                // statement in this transaction fails.
+                const reserved = await tx.$executeRaw`
+                    UPDATE "User"
+                    SET "useCount" = "useCount" + 1
+                    WHERE "id" = ${userId} AND "useCount" < ${FREE_USER_VIDEO_LIMIT}`;
+
+                if (reserved === 0) {
+                    throw new FreeLimitReachedError();
+                }
+            }
+
             if (!conversationId || conversationId === "new") {
                 const newConversation = await tx.conversation.create({
                     data: { firstPrompt: prompt, userId }
@@ -186,8 +214,49 @@ videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) =>
 
         const jobData: JobData = { id: video.id, conversationId, prompt, specs, userId, retry: 0 }
 
-        await JobQueue.add("video-job", jobData)
-        await redis.set(`video:${userId}:${video.id}`, videoStatusEnum.INITIATED, "EX", 3600)
+        try {
+            await JobQueue.add("video-job", jobData)
+        } catch (queueError) {
+            // Queueing happens after the DB transaction has committed, so the rows
+            // are NOT rolled back automatically. Keep the rows (video/conversation
+            // stay in DB in a failed state) and surface the failure to the client.
+            // Free-slot refund handling is planned separately.
+            logger.error({
+                msg: "Failed to queue video job; marking video failed",
+                videoId: video.id,
+                conversationId,
+                userId: userId,
+                error: queueError instanceof Error ? queueError.message : queueError
+            });
+            try {
+                await prismaClient.video.update({
+                    where: { id: video.id },
+                    data: {
+                        status: videoStatusEnum.FAILED,
+                        isError: true,
+                        Error: `Failed to queue video generation: ${queueError instanceof Error ? queueError.message : queueError}`
+                    }
+                });
+            } catch (markFailedError) {
+                logger.error({
+                    msg: "Failed to mark video as failed after queue failure",
+                    videoId: video.id,
+                    error: markFailedError instanceof Error ? markFailedError.message : markFailedError
+                });
+            }
+            return sendError(res, 500, "Failed to generate video");
+        }
+
+        try {
+            await redis.set(`video:${userId}:${video.id}`, videoStatusEnum.INITIATED, "EX", 3600)
+        } catch (redisError) {
+            // Non-fatal: the /video/status route falls back to the DB when Redis misses.
+            logger.warn({
+                msg: "Failed to set initial video status in Redis",
+                videoId: video.id,
+                error: redisError instanceof Error ? redisError.message : redisError
+            });
+        }
         logger.info({
             msg: "Job queued and Redis status set",
             videoId: video.id,
@@ -203,30 +272,21 @@ videoRouter.post("/create", videoGenLimiter, validateInputs, async (req, res) =>
             userId: userId
         });
 
-        if (!isPrime) {
-            logger.info({
-                msg: "Updating free user usage count",
-                userId: userId,
-                previousCount: user.useCount,
-                newCount: user.useCount + 1
-            });
+        // The free-tier useCount was already incremented atomically inside the
+        // transaction, so only reflect it in the response.
+        const responseUser = isPrime ? user : { ...user, useCount: user.useCount + 1 };
 
-            user = await prismaClient.user.update({
-                where: {
-                    id: userId
-                },
-                data: {
-                    useCount: user.useCount + 1
-                },
-                omit: {
-                    updatedAt: true,
-                    createdAt: true
-                }
-            })
+        res.status(200).json({ success: true, message: "Video generation started", video, user: responseUser })
+    } catch (error) {
+        if (error instanceof FreeLimitReachedError) {
+            logger.warn({
+                msg: "Free user limit reached (atomic gate)",
+                userId: userId,
+                usageCount: user?.useCount
+            });
+            return sendError(res, 403, `You have reached the limit of ${FREE_USER_VIDEO_LIMIT} video generations for free users. Please upgrade your plan to continue.`);
         }
 
-        res.status(200).json({ success: true, message: "Video generation started", video, user })
-    } catch (error) {
         logger.error({
             msg: "Failed to generate video",
             userId: userId,
