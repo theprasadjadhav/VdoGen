@@ -12,8 +12,13 @@ import { useEffect } from 'react'
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 function LandingRedirect() {
-  useEffect(() => { window.location.replace('/') }, [])
-  return null
+  // Prod: '/' is the static landing page served by the Cloudflare worker.
+  // Dev: vite serves this SPA at '/', so redirecting there would loop forever.
+  const dev = import.meta.env.DEV
+  useEffect(() => {
+    if (!dev) window.location.replace('/')
+  }, [dev])
+  return dev ? <Navigate replace to="/log-in" /> : null
 }
 
 function AppContentNew() {

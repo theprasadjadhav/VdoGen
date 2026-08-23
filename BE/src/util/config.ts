@@ -63,15 +63,28 @@ export { logger };
 
 //Kubernetes Configuration
 const kc = new k8s.KubeConfig();
+function isValidKubeServer(): boolean {
+    const server = kc.getCurrentCluster()?.server ?? "";
+    try {
+        return new URL(server).hostname !== "undefined";
+    } catch {
+        return false;
+    }
+}
 try {
     logger.info({ msg: 'Initializing Kubernetes client from cluster' });
+    // client-node >=1.0 does NOT throw when the pod service env vars are absent;
+    // it silently yields a bogus server (e.g. https://undefined:undefined), so validate.
     kc.loadFromCluster();
+    if (!isValidKubeServer()) throw new Error("in-cluster server invalid");
+    logger.info({ msg: 'Using in-cluster Kubernetes config', server: kc.getCurrentCluster()?.server });
 } catch (error) {
-    logger.error({ msg: 'Failed to initialize Kubernetes client from cluster ', error: error });
+    logger.warn({ msg: 'In-cluster Kubernetes config unavailable, falling back to default KubeConfig', error: error instanceof Error ? error.message : error });
 
     try {
-        logger.info({ msg: 'Falling back to default KubeConfig' });
         kc.loadFromDefault();
+        if (!isValidKubeServer()) throw new Error("kubeconfig has no valid current cluster/server");
+        logger.info({ msg: 'Using Kubernetes config from kubeconfig file', server: kc.getCurrentCluster()?.server, context: kc.getCurrentContext() });
     } catch (error) {
         logger.error({ msg: 'Failed to initialize Kubernetes client', error: error });
         throw new Error('Failed to initialize Kubernetes client');
@@ -98,7 +111,7 @@ export const anthropic = new Anthropic({
 
 // Google Cloud Storage Configuration
 export const storage = new Storage();
-export const bucketName =  process.env.K8S_NAMESPACE ?? "vdogen"
+export const bucketName = process.env.GCS_BUCKET_NAME ?? "vdogen"
 
 // Redis Configuration
 const redisConfig:RedisOptions = {
