@@ -67,11 +67,13 @@ paymentRoute.post("/webhook", express.raw({ type: "application/json" }), async (
         const session = JSON.parse(body);
 
         if (!session?.payload?.payment?.entity) {
-            logger.error({
-                msg: "Missing payment details in webhook payload",
-                payload: session?.payload,
+            logger.info({
+                msg: "Ignoring non-payment webhook event; no payment details found in payload.",
+                event: session.event,
+                payloadKeys: session?.payload ? Object.keys(session.payload) : undefined,
             });
-            res.status(400).json({ error: "Missing payment details in webhook payload" });
+       
+            res.status(200).json({ received: true });
             return;
         }
 

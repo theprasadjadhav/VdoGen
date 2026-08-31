@@ -18,6 +18,7 @@ node_modules/
 
 # ── BE specific ──────────────────────────────
 BE/vdogen-e3f9070cfa09.json
+BE/gcp_key.json
 BE/generated/
 # BE/prompts/: ignore prompt iterations, but keep the eval harness + docs
 BE/prompts/*
